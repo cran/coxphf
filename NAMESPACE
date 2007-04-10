@@ -1,0 +1,10 @@
+#### export of public functions:
+export(coxphf, coxphfplot, coxphftest, decomposeSurv) 
+
+#### definition of S3 methods:
+S3method(print, coxphf)
+S3method(summary, coxphf)
+S3method(print, coxphftest)
+
+#### register shared objects (Fortran DLL):
+useDynLib(coxphf)
