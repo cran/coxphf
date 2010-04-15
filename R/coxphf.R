@@ -39,7 +39,7 @@ function(
 	  mmm <- cbind(obj$mm1, obj$timedata)
 	   
 	  CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)	  
-        PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 0, 0, 0, 0, 0, 0, NTDE)
+        PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, 0.5)
         IOARRAY <- rbind(rep(1, k+NTDE), matrix(0, 2+k+NTDE, k + NTDE))
         if(NTDE>0)
                 IOARRAY[4, (k+1):(k+NTDE)] <- obj$timeind
@@ -78,7 +78,7 @@ function(
 
         # --------------- Aufruf Fortran - Makro PLCOMP ------------------------------------
         if(pl) {
-                PARMS <- c(PARMS[1:7], qchisq(1-alpha, 1), 0, 0, 0, 0, 0, NTDE)
+                PARMS <- c(PARMS[1:7], qchisq(1-alpha, 1), 0, 0, 0, 0, 0, NTDE, 0.5)
                 IOARRAY <- rbind(rep(1, k+NTDE), rep(0, k+NTDE), coef.orig, matrix(0, 5, k+NTDE))
                 if(NTDE>0)
                 		IOARRAY[4,(k+1):(k+NTDE)] <- obj$timeind
@@ -108,103 +108,6 @@ function(
 }
 
 
-"decomposeSurv" <-
-function(
- formula, 
- data,
- sort=FALSE
-)
-### decomposes complex survival formula
-### with time-factor interactions
-### 2006-10
-{
-	orig.formula <- formula
-
-	## expand formula if needed:
-	repeat {
-		terms <- terms(formula, data=data)
-		fac <- attr(terms, "factors")
-		needed <- rownames(fac)[!rownames(fac) %in% colnames(fac)][-1]
-
-		if(length(needed) == 0) break
-
-		formula <- as.formula(paste(as.character(formula)[2], "~", 
-							as.character(formula)[3], "+",
-							paste(needed, sep="+")))
-	}
-
-	## construct 3-col response:
-	resp <- model.extract(model.frame(formula, data = data), response)
-	if(ncol(resp) == 2)
-		resp <- cbind(start=rep(0, nrow(resp)), resp)
-
-	## sortieren nach STOPzeit und -Cens
-	if(sort) {
-	      sort <- order(resp[, 2],  -resp[, 3])
-      	data <- data[sort, , drop=FALSE]
-		resp <- resp[sort, ]
-	}
-		
-	mm <- model.matrix(formula, data = data) ## Model-Matrix
-	mm1 <- mm[, -1, drop=FALSE]	# w/o intercept
-	
-	terms <- terms(formula, data=data)
-	fac <- attr(terms, "factors")
-	labels <- attr(terms, "term.labels")
-	
-	## splittes by special chars
-	f <- function(str)
-		for(chars in c("(", ")", ":", " ", ",", "*", "^"))
-			str <- unlist(strsplit(str, split=chars, fixed=TRUE))
-		
-	rowSplit <- sapply(rownames(fac), f)	# splitted effects 
-	stopName <- tail(rowSplit[[1]], 2)[1]	# name of stoptime
-	rowInter <- unlist(lapply(rowSplit[-1], function(z) any(z == stopName)))
-		
-	fac <- fac[-1, , drop=FALSE]	# omit Surv
-
-	colSplit <- sapply(colnames(fac), f)
-	colInter <- unlist(lapply(colSplit, function(z) any(z == stopName)))
-
-	nTimes <- colSums(fac[rowInter, , drop=FALSE])
-	nFac   <- colSums(fac[!rowInter, , drop=FALSE])
-		
-	inters <- (nFac>0) & (nTimes>0)
-	NTDE <- sum(inters)
-
-	
-	timedata <- matrix(0, nrow(data), 0)
-	timeind <- c()
-
-	## loop for (time x effect)
-	for(i in which(inters)) {
-		## search pure time:
-		ind <- (colSums(fac[rowInter, i] != fac[rowInter, , drop=FALSE]) == 0) & (nFac==0)
-		timedata <- cbind(timedata, mm1[, ind, drop=FALSE])
-
-		## search pure effect:
-		ind <- (colSums(fac[!rowInter, i] != fac[!rowInter, , drop=FALSE]) == 0) & (nTimes == 0)
-		timeind <- c(timeind, which(ind[!colInter]))
-	}
-	mm1 <- mm1[, !colInter, drop=FALSE]
-	
-	covnames <- c(colnames(mm1),
-		paste(colnames(timedata), colnames(mm1)[timeind], sep=":")
-	)
-
-	## indicator to identify the original formula:
-	ind <- covnames %in% colnames(attr(terms(orig.formula, data=data), "factors"))
-	
-	list(NTDE=NTDE, 			# number time dep. effects
-		fac=fac, 			# factor matrix ..
-		resp=resp, 			# N x 3 - response matrix
-		mm1=mm1, 			# model matrix without time effects
-		timedata=timedata, 	# matrix with time functions as columns
-		timeind=timeind, 		# indicator of time-dependend effect
-		covnames=covnames,	# names of covariates
-		ind=ind			# indicator if some terms of not in formula
-	)
-}
 
 "coxphfplot" <-
 function(
@@ -249,7 +152,7 @@ function(
 	mmm <- cbind(obj$mm1, obj$timedata)
 
 	CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)   
-      PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 0, 0, 0, 0, 0, 0, NTDE)
+      PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, 0.5)
  
 	#--> nun Berechnungen fuer Schleife
 	formula2 <- as.formula(paste(as.character(formula)[2], 
@@ -358,7 +261,7 @@ function(
 	mmm <- cbind(obj$mm1, obj$timedata)
           
 	CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)   
-	PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 0, 0, 0, 0, 0, 0, NTDE)
+	PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, 0.5)
       IOARRAY <- rbind(rep(1, k+NTDE), matrix(0, 2+k+NTDE, k + NTDE))
       if(NTDE>0)
       	IOARRAY[4,(k+1):(k+NTDE)] <- obj$timeind
@@ -500,3 +403,53 @@ function(
 	invisible(object)
 }
 
+"breast" <-
+structure(list(T = as.integer(c(1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 
+1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 
+1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 
+1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 
+0, 1, 0, 0, 0, 0)), N = as.integer(c(0, 0, 1, 0, 1, 1, 0, 1, 
+0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 
+1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 
+0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 
+0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 
+0, 0, 1, 0, 0, 0, 0, 1)), G = as.integer(c(1, 1, 1, 1, 1, 1, 
+1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 
+1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 
+1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 
+1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 
+1, 1, 0, 0, 0, 1, 1, 0, 1, 0)), CD = as.integer(c(0, 1, 1, 1, 
+0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 
+1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 
+1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 
+1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0)), TIME = c(1.546052632, 3.519736842, 
+8.059210526, 8.651315789, 12.13815789, 12.36842105, 13.05921053, 
+14.76973684, 18.84868421, 20.03289474, 20.72368421, 21.64473684, 
+23.35526316, 23.68421053, 26.61184211, 27.96052632, 28.35526316, 
+30.42763158, 30.52631579, 30.92105263, 33.09210526, 36.90789474, 
+37.26973684, 39.90131579, 40.16447368, 41.25, 41.61184211, 44.93421053, 
+47.46710526, 47.46710526, 47.96052632, 49.04605263, 50, 55.26315789, 
+56.77631579, 58.02631579, 58.35526316, 58.71710526, 59.67105263, 
+60.23026316, 60.59210526, 62.36842105, 62.56578947, 63.48684211, 
+64.17763158, 64.90131579, 67.30263158, 70.09868421, 70.32894737, 
+72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 
+72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 
+72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 
+72, 72, 72), CENS = as.integer(c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 
+1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0))), .Names = c("T", "N", "G", "CD", "TIME", 
+"CENS"), row.names = c("1", "2", "3", "4", "5", "6", "7", "8", 
+"9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", 
+"20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", 
+"31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", 
+"42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", 
+"53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", 
+"64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", 
+"75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", 
+"86", "87", "88", "89", "90", "91", "92", "93", "94", "95", "96", 
+"97", "98", "99", "100"), class = "data.frame")

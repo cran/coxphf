@@ -8,9 +8,9 @@
   Wald confidence intervals
 }
 \usage{
-coxphf(formula = attr(data, "formula"), data = sys.parent(), pl = TRUE,
-       alpha = 0.05, maxit = 50, maxhs = 5, epsilon = 1e-06, maxstep = 2.5, 
-       firth = TRUE)
+coxphf(formula = attr(data, "formula"), data = sys.parent(), 
+       pl = TRUE, alpha = 0.05, maxit = 50, maxhs = 5, 
+       epsilon = 1e-06, maxstep = 2.5, firth = TRUE)
 }
 \arguments{
   \item{formula}{a formula object, with the response on the left of the  operator, and the
@@ -32,29 +32,23 @@ coxphf(formula = attr(data, "formula"), data = sys.parent(), pl = TRUE,
 }
 \details{
     The phenomenon of monotone likelihood in a sample causes parameter estimates of a Cox model to diverge,
-    with infinite standard errors. Therefore, classical maximum likelihood analysis fails; parameter estimates
-    and standard errors diverge such that the usual Wald confidence 
-    intervals cover the whole range of real numbers. This phenomenon has been described in the paragraph on CONVERGENCE of
-    found in the help files of the \code{coxph} function. Monotone likelihood appears if there is single covariate
+    with infinite standard errors. Therefore, classical maximum likelihood analysis fails; the usual Wald confidence 
+    intervals cover the whole range of real numbers. Monotone likelihood appears if there is single covariate
     or a linear combination of covariates such that at each event time, out of all individuals being at risk at that time,
     the individual with the highest (or at each event
-    time the individual with the lowest) value for that covariate or linear combination experiences the event. 
-    
-    It was shown that analysis by Firth's penalized likelihood method provides an ideal solution to the problem of
-    montone likleihood (Heinze and Schemper, 2001) as parameter estimates from this method are guaranteed to be finite.
-    Profile penalized likelihood confidence intervals and penalized likelihood ratio tests are superior to their
-    Wald counterparts in terms of coverage probability, size and power.
-    
-    The \code{coxphf} function is able to handle time-dependent effects or time-dependent covariates.
-    Time-dependent effects are specified by defining interactions of covariates with functions of time in the model
-    \code{formula}. Time-dependent covariates can be accounted for by the counting-process representation of survival
-    times. Please note that the function cannot be used for multivariate failure times, as the program has no option
+    time the individual with the lowest) value for that covariate or linear combination experiences the event. It was shown that
+    analysis by Firth's penalized likelihood method, particularly in conjunction with the computation
+    of profile likelihood confidence intervals and penalized likelihood ratio tests is superior to maximum
+    likelihood analysis. It completely removes the convergence problem mentioned in the paragraph on CONVERGENCE of
+    the description of the function \code{coxph}. The \code{formula} may involve time-dependent effects or 
+    time-dependent covariates. The response may
+    be given in counting process style, but it cannot be used for multivariate failure times, as the program has no option
     to fit a robust covariance matrix. The user is responsible for the independency of observations within each risk set, i.e., 
     the same individual should not appear twice within the same risk set.
     
     The package coxphf provides a comprehensive tool to facilitate the
 application of Firth's penalized likelihood method to Cox regression analysis. The core routines are written in Fortran 90,
-(and to our knowledge this is one of the first R packages written in Fortran 90). Some description of the problem of monotone likelihood
+(and to our knowledge this is the first package written in Fortran 90). Some description of the problem of monotone likelihood
 and Firth's penalized likelihood method as a solution can be found the web page
 \url{http://www.meduniwien.ac.at/msi/biometrie/programme/fc}.
     
@@ -107,7 +101,7 @@ x<-c(1,1,0)
 sim<-cbind(time,cens,x)
 sim<-data.frame(sim)
 coxphf(sim, formula=Surv(time,cens)~x) #convergence attained!
-coxph(sim, formula=Surv(time,cens)~x)  #no convergence!
+#coxph(sim, formula=Surv(time,cens)~x)  #no convergence!
 
 # time-dependent covariate
 test2 <- data.frame(list(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
@@ -119,16 +113,16 @@ summary( coxphf( formula=Surv(start, stop, event) ~ x, data=test2))
 
 
 # time-dependent effect
-# the coxphf function can handle interactions of a (fixed or time-dependent) 
+# the coxphf function can handle interactions of a (fixed or time-dependent)
 # covariate with time
 # such that the hazard ratio can be expressed as a function of time
 
-summary(coxphf(formula=Surv(start, stop, event)~x+x:log(stop), data=test2, firth=FALSE))
+summary(coxphf(formula=Surv(start, stop, event)~x+x:log(stop), data=test2, firth=TRUE))
 
 # note that coxph would treat x:log(stop) as a fixed covariate
 # (computed before the iteration process)
-# coxphf treats x:log(stop) as a time-dependent covariate which 
-# changes (for the same individual!) over time
+# coxphf treats x:log(stop) as a time-dependent covariate which changes (
+# for the same individual!) over time
 
 
 # time-dependent effect with monotone likelihood
@@ -141,10 +135,14 @@ test3 <- data.frame(list(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
 summary( coxphf( formula=Surv(start, stop, event) ~ x+x:log(stop), data=test3))
 
 
-# no convergence if option "firth" would be turned off: 
+# no convergence if option "firth" is turned off: 
 # summary( coxphf(formula=Surv(start, stop, event) ~ x+x:log(stop), 
 #                 data=test3, firth=FALSE)
 
+
+data(breast)
+fit.breast<-coxphf(data=breast, Surv(TIME,CENS)~T+N+G+CD)
+summary(fit.breast)
 }
 \keyword{survival}
 

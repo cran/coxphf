@@ -7,9 +7,9 @@ parameter.
 }
 \usage{
 coxphfplot(formula = attr(data, "formula"), data = sys.parent(), 
-           profile, pitch = 0.05, limits, alpha = 0.05, maxit = 50, 
-           maxhs = 5, epsilon = 1e-06, maxstep = 2.5, firth = TRUE, 
-           legend = "center", ...)
+           profile, pitch = 0.05, limits, alpha = 0.05, 
+           maxit = 50, maxhs = 5, epsilon = 1e-06, maxstep = 2.5, 
+           firth = TRUE, legend = "center", ...)
 }
 \arguments{
   \item{formula}{a formula object, with the response on the left of the  operator, and the
@@ -19,9 +19,9 @@ coxphfplot(formula = attr(data, "formula"), data = sys.parent(),
     general term, e.g. \code{~ A} or \code{~ A : C}.}
   \item{pitch}{distances between the interpolated points in standard errors of
     the parameter estimate, the default value is 0.05.}
-  \item{limits}{the range of the x-axis in terms of standard errors from the parameter estimate. By default, the x-axis
-     range is [min(Wald Lower CL, PL lower CL)-s/2, max(Wald Upper CL, PL Upper CL)+s/2], with s denoting the
-     standard error.}
+  \item{limits}{the range of the x-axis in terms of standard errors from the parameter estimate. The default values
+    are the extremes of both confidence intervals, Wald and PL, plus or minus half a
+    standard error, respectively.}
   \item{alpha}{the significance level (1-\eqn{\alpha} the confidence level,
     0.05 as default).}
   \item{maxit}{maximum number of iterations (default value is 50)}
@@ -46,8 +46,7 @@ asymmetric shape demands profile (penalized) likelihood intervals (Heinze
 & Schemper (2001)).
 }
 \value{
- A matrix of dimension \eqn{m} x 3, with \eqn{m} = \code{floor}(1 + \eqn{r} / \code{pitch}), where \eqn{r} 
- denotes the range of the x-axis in standard errors.
+ A matrix of dimension \eqn{m \times 3}, with \eqn{m = 1/\code{pitch} + 1}. With the default settings, \eqn{m=101}.
  The column headers are:
  \item{std}{the distance from the parameter estimate in standard errors}
  \item{x}{the parameter value}
@@ -65,6 +64,7 @@ Heinze G (1999). Technical Report 10/1999: The application of Firth's procedure 
 Heinze G and Ploner M (2002). SAS and SPLUS programs to perform Cox regression without convergence problems. \emph{Computer Methods
 and Programs in Biomedicine} 
 \url{}
+
 }
 \author{Georg Heinze and Meinhard Ploner}
 \note{
@@ -77,7 +77,6 @@ x<-c(1,1,0)
 sim<-cbind(time,cens,x)
 sim<-data.frame(sim)
 profplot<-coxphfplot(sim, formula=Surv(time,cens)~x, profile=~x)
-
 }
 \keyword{survival}
 

@@ -6,8 +6,9 @@ This function performs a penalized likelihood ratio test for hypotheses within
 a Cox regression analysis using Firth's penalized likelihood.
 }
 \usage{
-coxphftest(formula = attr(data, "formula"), data = sys.parent(), 
-           test = ~., values, maxit = 50, maxhs = 5, epsilon = 1e-06, 
+coxphftest(formula = attr(data, "formula"), 
+           data = sys.parent(), test = ~., values, 
+           maxit = 50, maxhs = 5, epsilon = 1e-06, 
            maxstep = 2.5, firth = TRUE)
 }
 \arguments{

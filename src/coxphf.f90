@@ -3,11 +3,11 @@ SUBROUTINE FIRTHCOX(cards, parms, IOARRAY)
 IMPLICIT DOUBLE PRECISION (A-H,O-Z)  
 
 
-real*8, dimension (14) :: parms
+real*8, dimension (15) :: parms
 integer N, IP,JCODE,IFIRTH,ISEP,ITER,IMAXIT,IMAXHS
 real*8, dimension (int(parms(1))) :: BX, T1, t2, TMSF
 real*8, dimension (int(parms(1)),int(parms(2))) :: X, XMSF, bresx
-real*8, dimension (int(parms(2)+parms(14))) :: B, B0, FD, OFFSET,STDERR,BMSF,zw1, xx, yy 
+real*8, dimension (int(parms(2)+parms(14))) :: B, B0, FD, absfd, OFFSET,STDERR,BMSF,zw1, xx, yy, b0start 
 real*8, dimension (int(parms(2)+parms(14)),int(parms(2)+parms(14))) :: SD, VM, WK
 integer, dimension (int(parms(1))) :: ibresc, IC, ICMSF
 integer, dimension (int(parms(2)+parms(14))) :: IFLAG
@@ -25,17 +25,22 @@ INTRINSIC DABS, DSQRT
 !open(unit=6, file="fgcssan.txt")
 
 ! ntde = parms(14)
-              
-N=parms(1)
-IP=parms(2)
-IFIRTH=parms(3)
-imaxit=Parms(4)
-imaxhs=parms(5)
+ilike=0
+N=int(parms(1))
+IP=int(parms(2))
+IFIRTH=int(parms(3))
+imaxit=int(Parms(4))
+imaxhs=int(parms(5))
 step=parms(6)
+steporig=step
 crili=parms(7)
+relridge=parms(8)
+gconv=parms(9)
+if(relridge .lt. 1) relridge=1.
 
-ngv=parms(13)
-ntde=parms(14)
+ngv=int(parms(13))
+ntde=int(parms(14))
+penalty=parms(15)              
 
 parms(10)=-11
 
@@ -96,6 +101,7 @@ elsewhere(iflag .eq. 2)
  b0=offset
  iflag=1
 endwhere
+b0start(:)=b0(:)
 
 isflag=sum(iflag)
 !write(6,*) "ISFLAG", isflag
@@ -106,9 +112,13 @@ iconv=0
 JCODE=0
 
 
-
 !do while((isflag .gt. 0) .and.  ((iter .gt. 1) .and. (dabs(xl0-xl) .gt. crili)) .and. (iter .lt. imaxit))
 do while((iconv .eq. 0) .and. (iter .lt. imaxit))
+! if((iter .eq. (imaxit-1)) .and. (imaxit .GT. 10) .and. (step .EQ. steporig)) then
+!  step=step/3
+!  iter=2
+!  b=b0start
+! end if
 ! write(6,*) iter, b
  iter=iter+1
  b0(:)=b(:)
@@ -116,7 +126,8 @@ do while((iconv .eq. 0) .and. (iter .lt. imaxit))
  parms(10)=-10
 ! write(6,*) "Vor 1. LIKE", b
  if (iter .eq. 1) then
-  CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH,ngv,score_weights,bresx,ibresc,ntde,ft,ftmap)
+  CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH,ngv,score_weights,bresx,ibresc,ntde,ft,ftmap, penalty)
+  ilike=ilike+1
  end if
 ! write(6,*) "Nach 1. LIKE"
 
@@ -155,20 +166,42 @@ do while((iconv .eq. 0) .and. (iter .lt. imaxit))
 !   half step if new log-likelihood is less than old one
    ICONV=0
    IHS=0
-   CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bresx,ibresc,ntde,ft,ftmap)
+   CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bresx,ibresc,ntde,ft,ftmap,penalty)
+   ilike=ilike+1
+   wk=-sd
    do while(((XL .le. XL0) .AND. (ITER.ne.1)) .AND. (ihs .le. imaxhs) .and. ((ngv .EQ. IP+ntde) .OR. (ngv .EQ. 0))) 
+!   do while((((XL .le. XL0) .or. (sum(abs(fd)) .gt. sumabsfd0)) .AND. (ITER.ne.1)) .AND. (ihs .le. imaxhs) .and. ((ngv .EQ. IP+ntde) .OR. (ngv .EQ. 0))) 
     IHS=IHS+1
-    where (iflag .eq. 1)
-     b=(b+b0)/2
-    end where
-    CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bresx,ibresc,ntde,ft,ftmap)
+    if (abs(relridge-1) .lt. 0.0001) then
+     where (iflag .eq. 1)
+      b=(b+b0)/2
+     end where
+    else
+     b=b0
+     do i=1,(ip+ntde)
+      wk(i,i)=wk(i,i)*relridge
+     end do
+     EPS=.000000000001D0
+     CALL INVERT(WK,IP+ntde,IP+ntde,VM,IP+ntde,EPS,IFAIL)                             
+     DO I=1,(IP+ntde)                                                      
+      IF (IFLAG(I).EQ.1) then 
+       TT=dot_product(vm(I,:),fd(:)*iflag(:))
+       IF (DABS(TT).GT.STEP) TT=TT/DABS(TT)*STEP
+        B(I)=B(I)+TT
+      end if
+     end do
+    end if
+    CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bresx,ibresc,ntde,ft,ftmap,penalty)
+    ilike=ilike+1
    end do
   end if
  end if
  ICONV=1
  if (isflag .gt. 0) then
   XX=dabs(B-B0)                                                   
+  absfd=dabs(fd)
   IF(any(XX.GT.CRILI)) ICONV=0
+  if(any(absfd .GT. gconv)) ICONV=0
  end if
 end do
 
@@ -207,10 +240,11 @@ zw=0.
 zw1=matmul(vm, fd)
 zw=dot_product(fd,zw1)
 parms(9)=zw
-
+parms(7)=maxval(abs(FD))
 parms(8)=jcode
 parms(11)=xl
 parms(10)=iter
+parms(4)=ilike
 
 !close(unit=6)
 
@@ -293,12 +327,12 @@ function deter(ain, IA, n)
 end function deter
 
 
-SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bresx,ibresc, ntde,ft, ftmap) 
+SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bresx,ibresc, ntde,ft, ftmap, penalty) 
 !DEC$ ATTRIBUTES DLLEXPORT :: like
 
  IMPLICIT DOUBLE PRECISION (A-H,O-Z)
  real*8, dimension (IP+ntde,IP+ntde) :: DINFO, DINFOI, SD, SDI, WK, help
- real*8, dimension (IP+ntde,IP+ntde,IP+ntde) :: dabl
+ real*8, dimension (IP+ntde,IP+ntde,IP+ntde) :: dabl, xxxebx
  real*8 SEBX, zeitp
  real*8, dimension (IP+ntde) :: XEBX, bresxges
  real*8, dimension (IP+ntde,IP+ntde) :: XXEBX
@@ -312,6 +346,7 @@ SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bres
  logical, dimension (N) :: maske
  real*8, dimension (N,ntde+1) :: ft
  integer, dimension (ntde+1) :: ftmap
+ logical ifastmode
 
  intrinsic dexp 
 
@@ -342,6 +377,13 @@ SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bres
 ! end do
  xges(:,1:ip)=x
 
+if ((maxval(t1) .lt. minval(t2)) .and. (ntde .eq. 0)) then
+  ifastmode=.true.
+else
+  ifastmode=.false.
+end if
+
+if (ifastmode .eqv. .false.) then
  do i=1,N
   if (ibresc(i) .ne. 0) then   
 !   write(6,*) i
@@ -417,6 +459,82 @@ SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bres
    end do
   end if
  end do
+end if
+
+ if (ifastmode .eqv. .true.) then
+  xl=0.
+  fd=0.
+  sd=0.
+  xebx=0.
+  xxebx=0.
+  xxxebx=0.
+  sebx=0.
+  ic_sum=0
+  bx=matmul(xges,b)
+  ebx=dexp(bx)
+ 
+  do i=N,1,-1
+   if (i .gt. 1) then   !look ahead because of Breslow tie correction
+    if (t2(i) .eq. t2(i-1)) then
+     ic_current=0
+     ic_sum = ic_sum+ic(i)
+    else
+     ic_current=ic_sum+ic(i)
+     ic_sum=0
+    end if
+   else
+    ic_current=ic_sum+ic(i)
+    ic_sum=0
+   end if
+   sebx=sebx+ebx(i)
+   do j=1,ipges
+    hhh0=xges(i,j)*ebx(i)
+    xebx(j)=xebx(j)+hhh0
+    do k=1,ipges
+     hhh1=hhh0*xges(i,k)
+     xxebx(j,k)=xxebx(j,k)+hhh1
+     if (ifirth.eq.1) then
+      do l=1,ipges
+       hhh2=xges(i,l)*hhh1
+       xxxebx(j,k,l)=xxxebx(j,k,l)+hhh2
+      end do
+     end if
+    end do
+   end do
+   if (sebx .gt. dlowest) then
+    dlogsebx=dlog(sebx)
+   else
+    dlogsebx=dlog(dlowest)
+   endif
+   if (ngv .eq. ipges) then 
+    XL=XL+(bx(i)*ic(i)-ic_current*DLOGSEBX)*score_weights(i,1)
+   else
+    XL=XL+(bx(i)*ic(i)-ic_current*DLOGSEBX)
+   endif
+   do j=1,ipges
+     FD(J)=FD(J)+(xges(i,J)*ic(i)-ic_current*XEBX(J)/SEBX)*score_weights(i,j)                           
+     do k=1,ipges
+!            SD(J,K)=SD(J,K)-ibresc(i)*((xxebx(j,k)-XEBX(J)/SEBX*XEBX(K))/SEBX)*score_weights(i,j)*score_weights(i,k) 
+      SD(J,K)=SD(J,K)-ic_current*((xxebx(j,k)-XEBX(J)/SEBX*XEBX(K))/SEBX)*(score_weights(i,j))*(score_weights(i,k))
+      if (ifirth .ne. 0) then
+!       hh1=xxebx(j,k)
+ !      hh1=xges(:,k)*xges(:,j)*ebx
+       DO L=1,IPges
+ !       hh2=xges(:,l)*hh1
+!        hh2=xges(:,l)*hh1
+        DABL(j,k,l)=DABL(j,k,l)-ic_current*((xxxebx(j,k,l)-xxEBX(k,l)*xEBX(j)/SEBx-xEBX(l)*(xxEBX(k,j)  &
+         -xEBX(k)*xEBX(j)/SEBx)/SEBx-xEBX(k)*(xxEBX(l,j)-xEBX(l)*xEBX(j)/SEBx)/SEBx)/SEBx)*score_weights(i,j) &
+         *score_weights(i,k)*score_weights(i,l)
+       end do
+      end if
+  
+     end do
+   end do
+  end do
+ 
+ 
+ 
+ end if
 
                     
  
@@ -437,7 +555,7 @@ SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bres
      TRACE=TRACE-DINFOI(k,l)*DABL(j,l,k)
     end do
    end do
-   fd(j)=fd(j)+trace/2
+   fd(j)=fd(j)+trace*penalty
   end do
 
  
@@ -450,7 +568,7 @@ SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bres
    IF(IDETFAIL.NE.0) JCODE=2
    IF (DET.LT.1.E-30) DET=1.E-30
   end if
-  XL=XL+0.5*dlog(DET)
+  XL=XL+penalty*dlog(DET)
  end if
 
  RETURN
@@ -465,7 +583,8 @@ SUBROUTINE PLCOMP(CARDS, PARMS, IOARRAY)
 
 IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 INTRINSIC DABS, DSQRT, DSIGN                                                    
-real*8, dimension (14) :: parms
+real*8, dimension (15) :: parms
+real*8, dimension (15) :: parmsfc
 real*8, dimension (int(parms(1))) :: T1,t2
 real*8, dimension (int(parms(1)),int(parms(2))) :: X, bresx
 integer, dimension (int(parms(1))) :: IC, ibresc
@@ -475,7 +594,6 @@ real*8, dimension (int(parms(2)+parms(14)),2) :: CI
 integer, dimension (int(parms(2)+parms(14))) :: IFLAG
 real*8, dimension (int(parms(1)),int(2*parms(2)+2*parms(14)+3)) :: cards
 real*8, dimension (8,int(parms(2)+parms(14))) :: IOARRAY
-real*8, dimension (14) :: parmsfc
 real*8, dimension (int(3+parms(2)+parms(14)),int(parms(2)+parms(14))) :: IOAFC
 real*8, dimension (int(parms(1)),int(parms(14)+1)) :: ft
 integer, dimension (int(parms(14)+1)) :: ftmap
@@ -495,6 +613,7 @@ PARMS(9)=0
 
 ngv=parms(13)
 ntde=parms(14)
+penalty=parms(15)
 
 offset(:)=ioarray(2,:)
 iflag(:)=ioarray(1,:)
@@ -572,7 +691,7 @@ score_weights=cards(:,(ip+4):(2*ip+3+ntde))
 !   Assuming that B maximizes the penalized likelihood
 
 !write(6,*) "vor 1. LIKE"
-CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH,ngv,score_weights,bresx,ibresc, ntde,ft,ftmap) 
+CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH,ngv,score_weights,bresx,ibresc, ntde,ft,ftmap,penalty) 
 !write(6,*) "nach 1. Like"
 wk(:,:)=-sd(:,:)
 EPS=.000000000001D0
@@ -630,7 +749,7 @@ do k=1,ip+ntde
     B(K2)=B(K2)+DELTA(K2)
    end do
 
-   CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH,ngv,score_weights,bresx,ibresc,ntde,ft,ftmap) 
+   CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH,ngv,score_weights,bresx,ibresc,ntde,ft,ftmap,penalty) 
    wk(:,:)=-sd(:,:)
    EPS=.000000000001D0
    CALL INVERT(WK,IP+ntde,IP+ntde,VM,IP+ntde,EPS,IFAIL)                             
@@ -704,6 +823,7 @@ DO K2=1,IP+ntde
  parmsfc(12)=0
  parmsfc(13)=ngv
  parmsfc(14)=ntde
+ parmsfc(15)=penalty
     
  do jjj=1,IP+ntde,1
   IOAFC(1,jjj)=1
