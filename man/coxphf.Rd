@@ -109,7 +109,7 @@ test2 <- data.frame(list(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
                 event=c(1, 1, 1, 1, 1, 1, 1, 0, 0, 0),
                 x    =c(1, 0, 0, 1, 0, 1, 1, 1, 0, 0) ))
 
-summary( coxphf( formula=Surv(start, stop, event) ~ x, data=test2))
+summary( coxphf( formula=Surv(start, stop, event) ~ x, pl=FALSE, data=test2))
 
 
 # time-dependent effect
@@ -117,7 +117,7 @@ summary( coxphf( formula=Surv(start, stop, event) ~ x, data=test2))
 # covariate with time
 # such that the hazard ratio can be expressed as a function of time
 
-summary(coxphf(formula=Surv(start, stop, event)~x+x:log(stop), data=test2, firth=TRUE))
+summary(coxphf(formula=Surv(start, stop, event)~x+x:log(stop), data=test2, pl=FALSE, firth=TRUE))
 
 # note that coxph would treat x:log(stop) as a fixed covariate
 # (computed before the iteration process)
@@ -132,11 +132,11 @@ test3 <- data.frame(list(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
                          event=c(1, 0, 0, 1, 0, 1, 1, 0, 0, 0),
                          x    =c(1, 0, 0, 1, 0, 1, 1, 1, 0, 0) ))
                          
-summary( coxphf( formula=Surv(start, stop, event) ~ x+x:log(stop), data=test3))
+summary( coxphf( formula=Surv(start, stop, event) ~ x+x:log(stop), pl=FALSE, maxit=400, data=test3))
 
 
 # no convergence if option "firth" is turned off: 
-# summary( coxphf(formula=Surv(start, stop, event) ~ x+x:log(stop), 
+# summary( coxphf(formula=Surv(start, stop, event) ~ x+x:log(stop), pl=F,
 #                 data=test3, firth=FALSE)
 
 

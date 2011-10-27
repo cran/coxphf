@@ -1,0 +1,10 @@
+d0e851084aa2c93fb642a51cc0d849ae *DESCRIPTION
+9160e065d49a3e46f8505be44d7c0885 *NAMESPACE
+0d69241ed410d5bd3123e4ca6b4fcbbc *R/coxphf.R
+096f46be8d31d9199bc62aa2868dff32 *R/decomposeSurv.r
+4e51e961dd92424b0cf57e31a4264eff *data/breast.txt.gz
+07f0cf61b25f8d40c55b2d3b8bf63beb *man/breast.Rd
+2a360ffb8d62d58cbe39056465b5bc23 *man/coxphf.rd
+89343200fd2349259d1749ecea4f36f1 *man/coxphfplot.Rd
+83bc8d8bd2a9d039665ac6cc10bddcee *man/coxphftest.Rd
+9cd86bfd20d9af7fd7c422f2fae140e7 *src/coxphf.f90

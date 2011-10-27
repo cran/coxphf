@@ -31,8 +31,8 @@ function(
         ones <- matrix(1, n, k+NTDE)
           
 	  ## standardisierung
-	  sd1 <- sd(obj$mm1)
-	  sd2 <- sd(obj$timedata)
+	  sd1 <- apply(as.matrix(obj$mm1),2,sd)
+	  sd2 <- apply(as.matrix(obj$timedata),2,sd)
 	  Z.sd <- c(sd1, sd2 * sd1[obj$timeind])
 	  obj$mm1 <- scale(obj$mm1, FALSE, sd1)
 	  obj$timedata <- scale(obj$timedata, FALSE, sd2)
@@ -144,8 +144,8 @@ function(
       ones <- matrix(1, n, k+NTDE)
           
       ## standardisierung
-	sd1 <- sd(obj$mm1)
-	sd2 <- sd(obj$timedata)
+	sd1 <- apply(as.matrix(obj$mm1),2,sd)
+	sd2 <- apply(as.matrix(obj$timedata),2,sd)
 	Z.sd <- c(sd1, sd2 * sd1[obj$timeind])
 	obj$mm1 <- scale(obj$mm1, FALSE, sd1)
 	obj$timedata <- scale(obj$timedata, FALSE, sd2)
@@ -253,8 +253,8 @@ function(
     	ones <- matrix(1, n, k + NTDE)
 	
 	## standardisierung
-	sd1 <- sd(obj$mm1)
-	sd2 <- sd(obj$timedata)
+	sd1 <- apply(as.matrix(obj$mm1),2,sd)
+	sd2 <- apply(as.matrix(obj$timedata),2,sd)
 	Z.sd <- c(sd1, sd2 * sd1[obj$timeind])
 	obj$mm1 <- scale(obj$mm1, FALSE, sd1)
 	obj$timedata <- scale(obj$timedata, FALSE, sd2)

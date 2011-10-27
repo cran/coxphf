@@ -3,22 +3,22 @@ SUBROUTINE FIRTHCOX(cards, parms, IOARRAY)
 IMPLICIT DOUBLE PRECISION (A-H,O-Z)  
 
 
-real*8, dimension (15) :: parms
+double precision, dimension (15) :: parms
 integer N, IP,JCODE,IFIRTH,ISEP,ITER,IMAXIT,IMAXHS
-real*8, dimension (int(parms(1))) :: BX, T1, t2, TMSF
-real*8, dimension (int(parms(1)),int(parms(2))) :: X, XMSF, bresx
-real*8, dimension (int(parms(2)+parms(14))) :: B, B0, FD, absfd, OFFSET,STDERR,BMSF,zw1, xx, yy, b0start 
-real*8, dimension (int(parms(2)+parms(14)),int(parms(2)+parms(14))) :: SD, VM, WK
+double precision, dimension (int(parms(1))) :: BX, T1, t2, TMSF
+double precision, dimension (int(parms(1)),int(parms(2))) :: X, XMSF, bresx
+double precision, dimension (int(parms(2)+parms(14))) :: B, B0, FD, absfd, OFFSET,STDERR,BMSF,zw1, xx, yy, b0start 
+double precision, dimension (int(parms(2)+parms(14)),int(parms(2)+parms(14))) :: SD, VM, WK
 integer, dimension (int(parms(1))) :: ibresc, IC, ICMSF
 integer, dimension (int(parms(2)+parms(14))) :: IFLAG
-real*8, dimension (int(parms(1)),int((2*parms(2)+3+2*(parms(14))))) :: cards
-real*8, dimension (int((3+parms(2)+parms(14))),int((parms(2)+parms(14)))) :: IOARRAY
-real*8, dimension (14) :: DER, EREST
+double precision, dimension (int(parms(1)),int((2*parms(2)+3+2*(parms(14))))) :: cards
+double precision, dimension (int((3+parms(2)+parms(14))),int((parms(2)+parms(14)))) :: IOARRAY
+double precision, dimension (14) :: DER, EREST
 logical, dimension (int(parms(2)+parms(14)),int(parms(2)+parms(14))) :: mask
-real*8, dimension (int(parms(1)),int(parms(14)+1)) :: ft
+double precision, dimension (int(parms(1)),int(parms(14)+1)) :: ft
 integer ngv, ntde
 integer, dimension (int(parms(14)+1)) :: ftmap
-real*8, dimension (int(parms(1)), int(parms(14)+parms(2))) :: score_weights
+double precision, dimension (int(parms(1)), int(parms(14)+parms(2))) :: score_weights
 
 INTRINSIC DABS, DSQRT               
 
@@ -255,7 +255,7 @@ end
 
 SUBROUTINE plusone(a)
 
-real*8 a
+double precision a
 
 a=a+1.
 
@@ -272,8 +272,8 @@ SUBROUTINE INVRT(A,IA)
 !...note that a is changed on exit                                      
 !                                                                       
  INTEGER IA,n
- real*8 eps                                             
- real*8, dimension (IA,ia) :: A, B, WK
+ double precision eps                                             
+ double precision, dimension (IA,ia) :: A, B, WK
  INTRINSIC DABS                                                    
                                                                        
  wk=a
@@ -298,9 +298,10 @@ SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)
 !...eps is a small quantity used to see if matrix singular              
 !...ifail on exit ifail=0 ok, ifail=1 matrix nearly singular            
 !                                                                       
+ IMPLICIT DOUBLE PRECISION (A-H,O-Z)
  INTEGER IA,N,ib,ifail
- real*8 eps                                             
- real*8, dimension (IA,N) :: A, B, WK
+ double precision eps                                             
+ double precision, dimension (IA,N) :: A, B, WK
  INTRINSIC DABS                                                    
                                                                        
  wk=a
@@ -314,37 +315,26 @@ SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)
  RETURN
 END  
 
-function deter(ain, IA, n)
-
- INTEGER e, ia, n
- real*8, dimension (IA, N) :: AIN
- real*8, dimension(3+n*(n+1)) :: a
- call fact(ain, a, IA, N)
- deter=det(e,a,n)
- deter=deter*10**e
-
- return
-end function deter
 
 
 SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bresx,ibresc, ntde,ft, ftmap, penalty) 
 !DEC$ ATTRIBUTES DLLEXPORT :: like
 
  IMPLICIT DOUBLE PRECISION (A-H,O-Z)
- real*8, dimension (IP+ntde,IP+ntde) :: DINFO, DINFOI, SD, SDI, WK, help
- real*8, dimension (IP+ntde,IP+ntde,IP+ntde) :: dabl, xxxebx
- real*8 SEBX, zeitp
- real*8, dimension (IP+ntde) :: XEBX, bresxges
- real*8, dimension (IP+ntde,IP+ntde) :: XXEBX
-! real*8, dimension (N+1, IP, Ip, IP) :: XXXEBX
- real*8, dimension (IP+ntde) :: FD, B, h1, h2, h3
- real*8, dimension (N) :: EBX, BX, T1, t2, WKS, hh0, hh1, hh2
+ double precision, dimension (IP+ntde,IP+ntde) :: DINFO, DINFOI, SD, SDI, WK, help
+ double precision, dimension (IP+ntde,IP+ntde,IP+ntde) :: dabl, xxxebx
+ double precision SEBX, zeitp
+ double precision, dimension (IP+ntde) :: XEBX, bresxges
+ double precision, dimension (IP+ntde,IP+ntde) :: XXEBX
+! double precision, dimension (N+1, IP, Ip, IP) :: XXXEBX
+ double precision, dimension (IP+ntde) :: FD, B, h1, h2, h3
+ double precision, dimension (N) :: EBX, BX, T1, t2, WKS, hh0, hh1, hh2
  integer, dimension (N) :: IC,ibresc
- real*8, dimension (N,IP) :: X, bresx
- real*8, dimension (N, ip+ntde) :: xges, score_weights
+ double precision, dimension (N,IP) :: X, bresx
+ double precision, dimension (N, ip+ntde) :: xges, score_weights
  integer ngv, ntde
  logical, dimension (N) :: maske
- real*8, dimension (N,ntde+1) :: ft
+ double precision, dimension (N,ntde+1) :: ft
  integer, dimension (ntde+1) :: ftmap
  logical ifastmode
 
@@ -563,10 +553,14 @@ end if
   IF(IPges .NE. 1) then 
    IDETFAIL=0
    DET=0.
-   det=deter(DINFO,IPGES,IPGES)
+!   det=deter(DINFO,IPGES,IPGES)
+   det=FindDet(DINFO,IPGES)
 !   CALL F03AAF(DINFO,IPges,IPges,DET,WKS,IDETFAIL)
-   IF(IDETFAIL.NE.0) JCODE=2
-   IF (DET.LT.1.E-30) DET=1.E-30
+!   IF(IDETFAIL.NE.0) JCODE=2
+   IF (DET.LT.1.E-30) then 
+     DET=1.E-30
+     JCODE=2
+   end if
   end if
   XL=XL+penalty*dlog(DET)
  end if
@@ -583,21 +577,21 @@ SUBROUTINE PLCOMP(CARDS, PARMS, IOARRAY)
 
 IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 INTRINSIC DABS, DSQRT, DSIGN                                                    
-real*8, dimension (15) :: parms
-real*8, dimension (15) :: parmsfc
-real*8, dimension (int(parms(1))) :: T1,t2
-real*8, dimension (int(parms(1)),int(parms(2))) :: X, bresx
+double precision, dimension (15) :: parms
+double precision, dimension (15) :: parmsfc
+double precision, dimension (int(parms(1))) :: T1,t2
+double precision, dimension (int(parms(1)),int(parms(2))) :: X, bresx
 integer, dimension (int(parms(1))) :: IC, ibresc
-real*8, dimension (int(parms(2)+parms(14))) :: B, B0, FD, OFFSET, PVALUE, XE,DELTA,XGRAD, BSAVE, STDERR
-real*8, dimension (int(parms(2)+parms(14)),int(parms(2)+parms(14))) :: SD, VM, WK, XHESS, XVM
-real*8, dimension (int(parms(2)+parms(14)),2) :: CI
+double precision, dimension (int(parms(2)+parms(14))) :: B, B0, FD, OFFSET, PVALUE, XE,DELTA,XGRAD, BSAVE, STDERR
+double precision, dimension (int(parms(2)+parms(14)),int(parms(2)+parms(14))) :: SD, VM, WK, XHESS, XVM
+double precision, dimension (int(parms(2)+parms(14)),2) :: CI
 integer, dimension (int(parms(2)+parms(14))) :: IFLAG
-real*8, dimension (int(parms(1)),int(2*parms(2)+2*parms(14)+3)) :: cards
-real*8, dimension (8,int(parms(2)+parms(14))) :: IOARRAY
-real*8, dimension (int(3+parms(2)+parms(14)),int(parms(2)+parms(14))) :: IOAFC
-real*8, dimension (int(parms(1)),int(parms(14)+1)) :: ft
+double precision, dimension (int(parms(1)),int(2*parms(2)+2*parms(14)+3)) :: cards
+double precision, dimension (8,int(parms(2)+parms(14))) :: IOARRAY
+double precision, dimension (int(3+parms(2)+parms(14)),int(parms(2)+parms(14))) :: IOAFC
+double precision, dimension (int(parms(1)),int(parms(14)+1)) :: ft
 integer, dimension (int(parms(14)+1)) :: ftmap
-real*8, dimension (int(parms(1)), int(parms(14)+parms(2))) :: score_weights
+double precision, dimension (int(parms(1)), int(parms(14)+parms(2))) :: score_weights
 
 !open(unit=6, file="fgcsspl.txt")
 
@@ -875,88 +869,6 @@ RETURN
 END   
 
 
-!      ________________________________________________________
-
-! Code converted using TO_F90 by Alan Miller
-! Date: 2006-04-13  Time: 10:09:09
-
-!     |                                                        |
-!     |  COMPUTE THE DETERMINANT OF A GENERAL FACTORED MATRIX  |
-!     |                                                        |
-!     |    INPUT:                                              |
-!     |                                                        |
-!     |         A     -FACT'S OUTPUT                           |
-!     |                                                        |
-!     |    OUTPUT:                                             |
-!     |                                                        |
-!     |         DET,E --DETERMINANT IS DET*10.**E (E INTEGER)  |
-!     |                                                        |
-!     |    BUILTIN FUNCTIONS: ABS,ALOG10,DLOG10                |
-!     |________________________________________________________|
-
-FUNCTION det(e,a,nin)
-
-INTEGER, INTENT(OUT)            :: e
-integer, intent(in)             :: nin
-REAL*8, INTENT(IN)              :: a(3+nin*(nin+1))
-REAL*8 :: d,f,g
-DOUBLE PRECISION :: c
-INTEGER :: h,i,j,k,l,m,n
-
-intrinsic DABS, dlog10
-
-d = a(1)
-IF ( DABS(d) == 1230 ) GO TO 10
-!WRITE(6,*) 'ERROR: MUST FACTOR BEFORE COMPUTING DETERMINANT'
-!STOP
-10    e = 0
-IF ( d < 0. ) GO TO 70
-n = a(2)
-IF ( n == 1 ) GO TO 80
-d = 1.
-f = 2.**64
-g = 1./f
-h = 64
-m = n + 1
-j = 0
-k = 4
-l = 3 - m + m*n
-DO  i = k,l,m
-  j = j + 1
-  IF ( a(i) > j ) d = -d
-  d = d*a(i+j)
-  20         IF ( DABS(d) < f ) GO TO 30
-  e = e + h
-  d = d*g
-  GO TO 20
-  30         IF ( DABS(d) > g ) CYCLE
-  e = e - h
-  d = d*f
-  GO TO 30
-END DO
-d = d*a(l+m)
-IF ( e /= 0 ) GO TO 50
-det = d
-RETURN
-50    IF ( d == 0. ) GO TO 90
-c = DLOG10(DABS(d)) + e*DLOG10(2.d0)
-e = c
-c = c - e
-IF ( c <= 0.d0 ) GO TO 60
-c = c - 1
-e = e + 1
-60    f = 10.**c
-IF ( d < 0. ) f = -f
-det = f
-RETURN
-70    det = 0.
-RETURN
-80    det = a(5)
-RETURN
-90    e = 0
-GO TO 70
-END FUNCTION det
-
 !
 
 ! Code converted using TO_F90 by Alan Miller
@@ -987,9 +899,9 @@ SUBROUTINE fact(ain,a,la,n)
 
 INTEGER, INTENT(IN)                      :: la
 INTEGER, INTENT(IN)                      :: n
-REAL*8, INTENT(in OUT)                     :: a(3+n*(n+1))
-real*8, intent(in)              ::  ain(n,n)
-REAL*8 :: r,s,t
+double precision, INTENT(in OUT)                     :: a(3+n*(n+1))
+double precision, intent(in)              ::  ain(n,n)
+double precision :: r,s,t
 INTEGER :: e,f,g,h,i,j,k,l, m, o,p
 
 intrinsic dabs
@@ -1105,7 +1017,7 @@ END SUBROUTINE fact
 
 SUBROUTINE packna(a,la,n)
 
-REAL*8, INTENT(OUT)                        :: a(1)
+double precision, INTENT(OUT)                        :: a(1)
 INTEGER, INTENT(IN)                      :: la
 INTEGER, INTENT(IN)                      :: n
 
@@ -1162,9 +1074,9 @@ SUBROUTINE vert(v,lv,n,w)
 
 INTEGER, INTENT(IN OUT)                  :: lv
 INTEGER, INTENT(IN)                      :: n
-REAL*8, INTENT(IN OUT)                     :: v(lv,N)
-REAL*8, INTENT(OUT)                     :: w(N)
-REAL*8 :: s,t
+double precision, INTENT(IN OUT)                     :: v(lv,N)
+double precision, INTENT(OUT)                     :: w(N)
+double precision :: s,t
 INTEGER :: i,j,k,l,m, p
 
 !Anm GH bei den Dimensionen die Indizes verändert, waren v(lv,1) und w(1) vorher
@@ -1242,3 +1154,59 @@ RETURN
 !WRITE(6,*) 'ERROR: MATRIX HAS NO INVERSE'
 STOP
 END SUBROUTINE vert
+
+
+
+
+!Function to find the determinant of a square matrix
+!Author : Louisda16th a.k.a Ashwith J. Rego
+!Description: The subroutine is based on two key points:
+!1] A determinant is unaltered when row operations are performed: Hence, using this principle,
+!row operations (column operations would work as well) are used
+!to convert the matrix into upper traingular form
+!2]The determinant of a triangular matrix is obtained by finding the product of the diagonal elements
+!
+DOUBLE PRECISION FUNCTION FindDet(matrix, n)
+	IMPLICIT NONE
+	DOUBLE PRECISION, DIMENSION(n,n) :: matrix
+	INTEGER, INTENT(IN) :: n
+	DOUBLE PRECISION :: m, temp
+	INTEGER :: i, j, k, l
+	LOGICAL :: DetExists = .TRUE.
+	l = 1
+	!Convert to upper triangular form
+	DO k = 1, n-1
+		IF (matrix(k,k) == 0) THEN
+			DetExists = .FALSE.
+			DO i = k+1, n
+				IF (matrix(i,k) /= 0) THEN
+					DO j = 1, n
+						temp = matrix(i,j)
+						matrix(i,j)= matrix(k,j)
+						matrix(k,j) = temp
+					END DO
+					DetExists = .TRUE.
+					l=-l
+					EXIT
+				ENDIF
+			END DO
+			IF (DetExists .EQV. .FALSE.) THEN
+				FindDet = 0
+				return
+			END IF
+		ENDIF
+		DO j = k+1, n
+			m = matrix(j,k)/matrix(k,k)
+			DO i = k+1, n
+				matrix(j,i) = matrix(j,i) - m*matrix(k,i)
+			END DO
+		END DO
+	END DO
+	
+	!Calculate determinant by finding product of diagonal elements
+	FindDet = l
+	DO i = 1, n
+		FindDet = FindDet * matrix(i,i)
+	END DO
+	
+END FUNCTION FindDet
