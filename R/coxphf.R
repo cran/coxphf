@@ -51,7 +51,7 @@ function(
         value <- .Fortran("firthcox",
                 CARDS,
                 outpar = PARMS,
-                outtab = IOARRAY, PACKAGE=coxphf)
+                outtab = IOARRAY, PACKAGE="coxphf")
         if(value$outpar[8])
                 warning("Error in routine FIRTHCOX; parms8 <> 0")
         outtab <- matrix(value$outtab, nrow=3+k+NTDE) #
@@ -88,7 +88,7 @@ function(
                 value <- .Fortran("plcomp",
                         CARDS,
                         outpar = PARMS,
-                        outtab = IOARRAY, PACKAGE=coxphf)
+                        outtab = IOARRAY, PACKAGE="coxphf")
                 if(value$outpar[9])
                         warning("Error in routine PLCOMP: parms9 <> 0")
                 outtab <- matrix(value$outtab, nrow = 8, ncol = k+NTDE)
@@ -185,7 +185,7 @@ function(
 		value <- .Fortran("firthcox",
 			CARDS,
 			outpar = PARMS,
-			outtab = IOARRAY, PACKAGE=coxphf)
+			outtab = IOARRAY, PACKAGE="coxphf")
 		if(value$outpar[8])
 			warning("Error in routine FIRTHCOX; parms8 <> 0")
 		res[i, 3] <- value$outpar[11]
@@ -272,7 +272,7 @@ function(
 	value <- .Fortran("firthcox",
 		CARDS,
 		outpar = PARMS,
-		outtab = IOARRAY, PACKAGE=coxphf)
+		outtab = IOARRAY, PACKAGE="coxphf")
 	 if(value$outpar[8])
                 warning("Error in routine FIRTHCOX; parms8 <> 0")
       loglik <- c(NA, value$outpar[11])
@@ -294,7 +294,7 @@ function(
 	value <- .Fortran("firthcox",
 		CARDS,
 		outpar = PARMS,
-		outtab = IOARRAY, PACKAGE=coxphf)
+		outtab = IOARRAY, PACKAGE="coxphf")
 	if(value$outpar[8])
                 warning("Error in routine FIRTHCOX; parms8 <> 0")
 	loglik[1] <- value$outpar[11]

@@ -67,8 +67,6 @@ and Programs in Biomedicine}
 
 }
 \author{Georg Heinze and Meinhard Ploner}
-\note{
-}
 \seealso{coxphf}
 \examples{
 time<-c(1,2,3)

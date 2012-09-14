@@ -59,8 +59,6 @@ and Programs in Biomedicine}
 \url{}
 }
 \author{Georg Heinze and Meinhard Ploner}
-\note{
-}
 \seealso{coxphf, coxphfplot}
 \examples{
 testdata <- data.frame(list(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
