@@ -62,7 +62,8 @@ if (ntde .gt. 0) then
 !   write(6,*) ft(i,j)
 !  end do
   ft(:,1:ntde)=cards(:,(2*ip+3+ntde+1):(2*ip+3+ntde*2))
-  ftmap(:)=ioarray(4,ip+1:ip+ntde)
+  ftmap(1:ntde)=ioarray(4,(ip+1):(ip+ntde))
+!  ftmap(:)=ioarray(4,(ip+1):(ip+ntde))
 !  end do
 else
  ft=0
@@ -629,7 +630,7 @@ ic=cards(:,ip+3)
 x=cards(:,1:ip)
 if (ntde .gt. 0) then 
   ft(:,1:ntde)=cards(:,(2*ip+3+ntde+1):(2*ip+3+ntde*2))
-  ftmap(:)=ioarray(4,ip+1:ip+ntde)
+  ftmap(1:ntde)=ioarray(4,(ip+1):(ip+ntde))
 else
  ft=0
  ftmap=0
@@ -992,55 +993,7 @@ RETURN
 END SUBROUTINE fact
 
 
-!
 
-! Code converted using TO_F90 by Alan Miller
-! Date: 2006-04-13  Time: 10:10:05
-
-!      ________________________________________________________
-!     |                                                        |
-!     |   REARRANGE THE ELEMENTS OF A REAL ARRAY SO THAT THE   |
-!     |  ELEMENTS OF A SQUARE MATRIX ARE STORED SEQUENTIALLY   |
-!     |                                                        |
-!     |    INPUT:                                              |
-!     |                                                        |
-!     |         A     --REAL ARRAY CONTAINING SQUARE MATRIX    |
-!     |                                                        |
-!     |         LA    --LEADING (ROW) DIMENSION OF ARRAY A     |
-!     |                                                        |
-!     |         N     --DIMENSION OF MATRIX STORED IN A        |
-!     |                                                        |
-!     |    OUTPUT:                                             |
-!     |                                                        |
-!     |         A     --MATRIX PACKED AT START OF ARRAY        |
-!     |________________________________________________________|
-
-SUBROUTINE packna(a,la,n)
-
-double precision, INTENT(OUT)                        :: a(1)
-INTEGER, INTENT(IN)                      :: la
-INTEGER, INTENT(IN)                      :: n
-
-INTEGER :: h,i,j,k,l, o
-
-h = la - n
-IF ( h == 0 ) RETURN
-IF ( h > 0 ) GO TO 10
-! WRITE(6,*) 'ERROR: LA ARGUMENT IN PACK MUST BE .GE. N ARGUMENT'
-RETURN
-10    i = 0
-k = 1
-l = n
-o = n*n
-20    IF ( l == o ) RETURN
-i = i + h
-k = k + n
-l = l + n
-DO  j = k,l
-  a(j) = a(i+j)
-END DO
-GO TO 20
-END SUBROUTINE packna
 
 
 !

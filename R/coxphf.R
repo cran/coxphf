@@ -1,7 +1,3 @@
-".First.lib" <-
-function(lib, pkg) 
-		library.dynam("coxphf", pkg, lib)
-
 "coxphf" <-
 function(
  formula=attr(data, "formula"),	# formula where .time. represents time for time-interactions
