@@ -52,18 +52,18 @@ asymmetric shape demands profile (penalized) likelihood intervals (Heinze
  \item{x}{the parameter value}
  \item{log-likelihood}{the profile likelihood at \code{x}}
 }
-\references{Firth D (1993). Bias reduction of maximum likelihood estimates. \emph{Biometrika} 
-  80, 27--38.
+\references{
+Firth D (1993). Bias reduction of maximum likelihood estimates. \emph{Biometrika} 
+  80:27--38.
 
 Heinze G and Schemper M (2001). A Solution to the Problem of Monotone Likelihood in Cox Regression. \emph{Biometrics}
- 57/1, 114-119. \url{}
+ 57(1):114--119. 
 
 Heinze G (1999). Technical Report 10/1999: The application of Firth's procedure to Cox and logistic regression. Section of Clinical Biometrics, Department of Medical Computer Sciences, University of Vienna, Vienna.
-\url{}
+\url{http://cemsiis.meduniwien.ac.at/en/kb/science-research/software/statistical-software/fccoxphf/}
  
 Heinze G and Ploner M (2002). SAS and SPLUS programs to perform Cox regression without convergence problems. \emph{Computer Methods
-and Programs in Biomedicine} 
-\url{}
+and Programs in Biomedicine 67:217-223} 
 
 }
 \author{Georg Heinze and Meinhard Ploner}

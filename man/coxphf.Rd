@@ -1,5 +1,6 @@
 \name{coxphf}
 \alias{coxphf}
+\alias{Surv}
 \title{Cox regression with Firth's penalized likelihood}
 \description{
   Implements Firth's penalized maximum likelihood bias reduction method  for Cox regression
@@ -10,11 +11,11 @@
 \usage{
 coxphf(formula = attr(data, "formula"), data = sys.parent(), 
        pl = TRUE, alpha = 0.05, maxit = 50, maxhs = 5, 
-       epsilon = 1e-06, maxstep = 2.5, firth = TRUE)
+       epsilon = 1e-06, maxstep = 2.5, firth = TRUE)       
 }
 \arguments{
   \item{formula}{a formula object, with the response on the left of the  operator, and the
-    model terms on the right. The response must be a survival object as returned by the 'Surv' function.
+    model terms on the right. The response must be a survival object as returned by the 'Surv' function (see its documentation in the survival package).
     }
   \item{data}{a data.frame in which to interpret the variables named in the 'formula' argument. }
   \item{pl}{specifies if confidence intervals and tests should be based on the profile penalized     log likelihood (\code{pl=TRUE}, the default) or on the Wald method (\code{pl=FALSE}).}
@@ -50,7 +51,7 @@ coxphf(formula = attr(data, "formula"), data = sys.parent(),
 application of Firth's penalized likelihood method to Cox regression analysis. The core routines are written in Fortran 90,
 (and to our knowledge this is the first package written in Fortran 90). Some description of the problem of monotone likelihood
 and Firth's penalized likelihood method as a solution can be found the web page
-\url{http://www.meduniwien.ac.at/msi/biometrie/programme/fc}.
+\url{http://cemsiis.meduniwien.ac.at/en/kb/science-research/software/statistical-software/fccoxphf/}.
     
     }
 \value{
@@ -75,17 +76,17 @@ and Firth's penalized likelihood method as a solution can be found the web page
 }
 \references{
 Firth D (1993). Bias reduction of maximum likelihood estimates. \emph{Biometrika} 
-  80, 27--38.
+  80:27--38.
 
 Heinze G and Schemper M (2001). A Solution to the Problem of Monotone Likelihood in Cox Regression. \emph{Biometrics}
- 57/1, 114-119. \url{}
+ 57(1):114--119. 
 
 Heinze G (1999). Technical Report 10/1999: The application of Firth's procedure to Cox and logistic regression. Section of Clinical Biometrics, Department of Medical Computer Sciences, University of Vienna, Vienna.
-\url{}
+\url{http://cemsiis.meduniwien.ac.at/en/kb/science-research/software/statistical-software/fccoxphf/}
  
 Heinze G and Ploner M (2002). SAS and SPLUS programs to perform Cox regression without convergence problems. \emph{Computer Methods
-and Programs in Biomedicine} 
-\url{}
+and Programs in Biomedicine 67:217-223} 
+
 }
 \author{Georg Heinze and Meinhard Ploner}
 \note{
