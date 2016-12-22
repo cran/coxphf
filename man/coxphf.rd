@@ -1,17 +1,18 @@
 \name{coxphf}
 \alias{coxphf}
 \alias{Surv}
-\title{Cox regression with Firth's penalized likelihood}
+\title{Cox Regression with Firth's Penalized Likelihood}
 \description{
   Implements Firth's penalized maximum likelihood bias reduction method  for Cox regression
-  which has been shown to provide a solution in case of monotone likelihood (nonconvergence of likelihood function)
+  which has been shown to provide a solution in case of monotone likelihood (nonconvergence of likelihood function).
   The program fits profile penalized likelihood confidence intervals which were proved to outperform
-  Wald confidence intervals
+  Wald confidence intervals.
 }
 \usage{
 coxphf(formula = attr(data, "formula"), data = sys.parent(), 
        pl = TRUE, alpha = 0.05, maxit = 50, maxhs = 5, 
-       epsilon = 1e-06, maxstep = 2.5, firth = TRUE)       
+       epsilon = 1e-06, gconv=0.0001, maxstep = 2.5, firth = TRUE, adapt=NULL, 
+	   penalty=0.5)       
 }
 \arguments{
   \item{formula}{a formula object, with the response on the left of the  operator, and the
@@ -24,12 +25,18 @@ coxphf(formula = attr(data, "formula"), data = sys.parent(),
   \item{maxhs}{maximum number of step-halvings per iterations (default value is 5). 
      The increments of the parameter vector in one Newton-Rhaphson iteration step are halved, 
      unless the new likelihood is greater than the old one, maximally doing \code{maxhs} halvings.}
-  \item{epsilon}{specifies the maximum allowed change in penalized log likelihood to
+  \item{epsilon}{specifies the maximum allowed change in standardized parameter estimates to
+    declare convergence. Default value is 1e-6.}
+  \item{gconv}{specifies the maximum allowed absolute value of first derivative of likelihood to
     declare convergence. Default value is 0.0001.}
   \item{maxstep}{specifies the maximum change of (standardized) parameter values allowed
     in one iteration. Default value is 2.5.}
   \item{firth}{use of Firth's penalized maximum likelihood (\code{firth=TRUE}, default) or the
     standard maximum likelihood method (\code{firth=FALSE}) for fitting the Cox model.}
+  \item{adapt}{optional: specifies a vector of 1s and 0s, where 0 means that the corresponding parameter is fixed at 0, while 1 enables
+     parameter estimation for that parameter. The length of adapt must be equal to the number of parameters to be estimated.}
+  \item{penalty}{strength of Firth-type penalty. Defaults to 0.5.}
+
 }
 \details{
     The phenomenon of monotone likelihood in a sample causes parameter estimates of a Cox model to diverge,
@@ -73,6 +80,8 @@ and Firth's penalized likelihood method as a solution can be found the web page
  \item{ci.upper}{the upper confidence limits}
  \item{prob}{the p-values}
  \item{call}{the function call}
+ \item{iter.ci}{the numbers of iterations needed for profile likelihood confidence interval estimation, and for maximizing the 
+  restricted likelihood for p-value computation.}
 }
 \references{
 Firth D (1993). Bias reduction of maximum likelihood estimates. \emph{Biometrika} 

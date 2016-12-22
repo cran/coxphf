@@ -1,9 +1,9 @@
 \name{breast}
 \alias{breast}
 \docType{data}
-\title{Breast cancer data set}
+\title{Breast Cancer Data Set}
 \description{
-The Breast cancer data set as used by Heinze & Schemper, 2001.
+Provides the breast cancer data set as used by Heinze & Schemper, 2001.
 The data sets contains information on 100 breast cancer patients, including:
 survival time, survival status, Tumor stage, Nodal status, Grading, Cathepsin-D tumorexpression
 }

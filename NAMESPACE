@@ -1,5 +1,8 @@
-#### import
-importFrom(survival, Surv)
+#### imports
+importFrom("survival", "Surv")
+importFrom("graphics","axis","mtext","par", "plot", "points","segments","title")
+importFrom("stats","as.formula","coef","model.extract","model.frame","model.matrix","pchisq","qchisq","qnorm","sd")
+importFrom("utils","tail")
 
 #### export of public functions:
 export(breast,coxphf, coxphfplot, coxphftest, Surv) 

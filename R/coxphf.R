@@ -7,14 +7,25 @@ function(
  maxit=50,
  maxhs=5,
  epsilon=1e-6,
+ gconv=1e-4,
  maxstep=2.5,
- firth=TRUE
+ firth=TRUE,
+ adapt=NULL,
+ penalty=0.5
 ){
 ### by MP und GH, 2006
+### new parameters (2015-11):
+### penalty = strength of penalty (Firth=0.5)
+### adapt = vector of 1 and 0; 1 for parameter to be optimized, 0 for parameter not to be changed (null parameters) but included in penalty
+### length(adapt) must be k+NTDE (= number of regression coefficients including time-dependent effects)
+
 ### Surv-Objekt entweder usual  (z.B. Surv(time,event)~A+B+C+D) oder
 ### Counting-Process-Style!! (z.B. Surv(start,stop,event)~A+B+C+D)
 ### event: 1=dead/event, 0=censored
 ###
+      if(!is.logical(firth)) stop("Please set option firth to TRUE or FALSE.\n")
+      if(!is.logical(pl)) stop("Please set option pl to TRUE or FALSE.\n")
+	  
         n <- nrow(data)
 
 	  obj <- decomposeSurv(formula, data, sort=TRUE)
@@ -25,6 +36,11 @@ function(
 
         k <- ncol(obj$mm1)          # number covariates
         ones <- matrix(1, n, k+NTDE)
+        
+    if(!is.null(adapt)){
+      if(k+NTDE != length(adapt)) stop("length of adapt must match the number of parameters to be estimated.")
+      if(any(adapt !=0 & adapt !=1)) stop("adapt must consist of 0s and 1s exclusively.")
+    }
           
 	  ## standardisierung
 	  sd1 <- apply(as.matrix(obj$mm1),2,sd)
@@ -35,8 +51,9 @@ function(
 	  mmm <- cbind(obj$mm1, obj$timedata)
 	   
 	  CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)	  
-        PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, 0.5)
+        PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, gconv, 0, 0, 0, 0, NTDE, penalty)
         IOARRAY <- rbind(rep(1, k+NTDE), matrix(0, 2+k+NTDE, k + NTDE))
+        if(!is.null(adapt)) IOARRAY[1,]<-adapt
         if(NTDE>0)
                 IOARRAY[4, (k+1):(k+NTDE)] <- obj$timeind
         storage.mode(CARDS) <- "double"
@@ -60,7 +77,9 @@ function(
         dimnames(covs) <- list(cov.name, cov.name)
         vars <- diag(covs)
         names(coefs) <- cov.name
-        fit <- list(coefficients = coefs, alpha = alpha, var = covs, df = k+NTDE,
+        df<-k+NTDE
+        if(!is.null(adapt)) df<-sum(adapt>0)
+        fit <- list(coefficients = coefs, alpha = alpha, var = covs, df = df,
                         loglik = value$outpar[12:11], iter = value$outpar[10],
                         method.ties = "breslow", n = n, ##terms = terms(formula),
                         y = obj$resp, formula = formula, call = match.call())
@@ -70,12 +89,13 @@ function(
                 fit$method <- "Penalized ML"
           else
                 fit$method <- "Standard ML"
-
+        if(penalty != 0.5) fit$method<-paste(fit$method, " (penalty=",penalty,")",sep="")
 
         # --------------- Aufruf Fortran - Makro PLCOMP ------------------------------------
         if(pl) {
-                PARMS <- c(PARMS[1:7], qchisq(1-alpha, 1), 0, 0, 0, 0, 0, NTDE, 0.5)
-                IOARRAY <- rbind(rep(1, k+NTDE), rep(0, k+NTDE), coef.orig, matrix(0, 5, k+NTDE))
+                PARMS <- c(PARMS[1:7], qchisq(1-alpha, 1), gconv, 0, 0, 0, 0, NTDE, penalty)
+                IOARRAY <- rbind(rep(1, k+NTDE), rep(0, k+NTDE), coef.orig, matrix(0, 6, k+NTDE))
+                if(!is.null(adapt)) IOARRAY[1,]<-adapt
                 if(NTDE>0)
                 		IOARRAY[4,(k+1):(k+NTDE)] <- obj$timeind
                 storage.mode(PARMS) <- "double"
@@ -87,11 +107,14 @@ function(
                         outtab = IOARRAY, PACKAGE="coxphf")
                 if(value$outpar[9])
                         warning("Error in routine PLCOMP: parms9 <> 0")
-                outtab <- matrix(value$outtab, nrow = 8, ncol = k+NTDE)
+                outtab <- matrix(value$outtab, nrow = 9, ncol = k+NTDE)
                 fit$method.ci <- "Profile Likelihood"
                 fit$ci.lower <- exp(outtab[4,  ] / Z.sd)
                 fit$ci.upper <- exp(outtab[5,  ] / Z.sd)
                 fit$prob <- 1 - pchisq(outtab[6,  ], 1)
+                fit$iter.ci<-t(outtab[7:9,])
+                colnames(fit$iter.ci)<-c("Lower", "Upper", "P-value")
+                rownames(fit$iter.ci)<-cov.name
           } else {
                 fit$method.ci <- "Wald"
                 fit$ci.lower <- exp(coefs + qnorm(alpha/2) * vars^0.5)
@@ -118,6 +141,8 @@ function(
  epsilon = 1e-006, 
  maxstep = 2.5, 
  firth = TRUE, 
+ penalty=0.5,
+ adapt=NULL,
  legend="center",	# see R-help of function <legend>, "" produces no legend
  ...			# other parameters to <legend>
 ) {
@@ -125,7 +150,7 @@ function(
 ###
 	## aufruf coxphf:
 	fit <- coxphf(formula=formula, data=data, alpha=alpha, maxit=maxit, maxhs=maxhs, 
-		epsilon=epsilon, maxstep=maxstep, firth=firth, pl=TRUE)
+		epsilon=epsilon, maxstep=maxstep, firth=firth, pl=TRUE, penalty=penalty, adapt=adapt)
 	coefs <- coef(fit)           ## "normale" Koeffizienten
 	covs <- fit$var              ## Varianzen
 	n <- nrow(data)
@@ -148,7 +173,7 @@ function(
 	mmm <- cbind(obj$mm1, obj$timedata)
 
 	CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)   
-      PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, 0.5)
+      PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, penalty)
  
 	#--> nun Berechnungen fuer Schleife
 	formula2 <- as.formula(paste(as.character(formula)[2], 
@@ -167,6 +192,7 @@ function(
 	limits <- c(floor(limits[1]/pitch)*pitch, ceiling(limits[2]/pitch)*pitch)
 	knots <- seq(limits[1], limits[2], pitch)
 	iflag <- rep(1, k+NTDE)
+	if(!is.null(adapt)) iflag<-adapt
 	iflag[pos] <- 0
 	offset <- rep(0, k+NTDE)
 	nn <- length(knots)
@@ -236,7 +262,9 @@ function(
  maxhs=5, 
  epsilon=1e-6, 
  maxstep=2.5, 
- firth=TRUE
+ firth=TRUE,
+ adapt=NULL,
+ penalty=0.5
 ) {
 ### MP, GH, 2006-10
 ###
@@ -257,9 +285,10 @@ function(
 	mmm <- cbind(obj$mm1, obj$timedata)
           
 	CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)   
-	PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, 0.5)
-      IOARRAY <- rbind(rep(1, k+NTDE), matrix(0, 2+k+NTDE, k + NTDE))
-      if(NTDE>0)
+	PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, penalty)
+  IOARRAY <- rbind(rep(1, k+NTDE), matrix(0, 2+k+NTDE, k + NTDE))
+  if(!is.null(adapt)) IOARRAY[1,]<-adapt      
+  if(NTDE>0)
       	IOARRAY[4,(k+1):(k+NTDE)] <- obj$timeind
 	storage.mode(CARDS) <- "double"
 	storage.mode(PARMS) <- "double"

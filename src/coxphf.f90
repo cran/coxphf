@@ -5,15 +5,15 @@ IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 
 double precision, dimension (15) :: parms
 integer N, IP,JCODE,IFIRTH,ISEP,ITER,IMAXIT,IMAXHS
-double precision, dimension (int(parms(1))) :: BX, T1, t2, TMSF
-double precision, dimension (int(parms(1)),int(parms(2))) :: X, XMSF, bresx
-double precision, dimension (int(parms(2)+parms(14))) :: B, B0, FD, absfd, OFFSET,STDERR,BMSF,zw1, xx, yy, b0start 
+double precision, dimension (int(parms(1))) :: T1, t2
+double precision, dimension (int(parms(1)),int(parms(2))) :: X,  bresx
+double precision, dimension (int(parms(2)+parms(14))) :: B, B0, FD, absfd, OFFSET,zw1, xx, yy, b0start 
 double precision, dimension (int(parms(2)+parms(14)),int(parms(2)+parms(14))) :: SD, VM, WK
-integer, dimension (int(parms(1))) :: ibresc, IC, ICMSF
+integer, dimension (int(parms(1))) :: ibresc, IC
 integer, dimension (int(parms(2)+parms(14))) :: IFLAG
 double precision, dimension (int(parms(1)),int((2*parms(2)+3+2*(parms(14))))) :: cards
 double precision, dimension (int((3+parms(2)+parms(14))),int((parms(2)+parms(14)))) :: IOARRAY
-double precision, dimension (14) :: DER, EREST
+!double precision, dimension (14) :: DER, EREST
 logical, dimension (int(parms(2)+parms(14)),int(parms(2)+parms(14))) :: mask
 double precision, dimension (int(parms(1)),int(parms(14)+1)) :: ft
 integer ngv, ntde
@@ -45,11 +45,11 @@ penalty=parms(15)
 parms(10)=-11
 
 offset=ioarray(2,:)
-iflag=ioarray(1,:)
+iflag=int(ioarray(1,:))
 
 t1=cards(:,ip+1)
 t2=cards(:,ip+2)
-ic=cards(:,ip+3)
+ic=int(cards(:,ip+3))
 score_weights=cards(:,(ip+4):(2*ip+3+ntde))
 
 x=cards(:,1:ip)
@@ -62,7 +62,7 @@ if (ntde .gt. 0) then
 !   write(6,*) ft(i,j)
 !  end do
   ft(:,1:ntde)=cards(:,(2*ip+3+ntde+1):(2*ip+3+ntde*2))
-  ftmap(1:ntde)=ioarray(4,(ip+1):(ip+ntde))
+  ftmap(1:ntde)=int(ioarray(4,(ip+1):(ip+ntde)))
 !  ftmap(:)=ioarray(4,(ip+1):(ip+ntde))
 !  end do
 else
@@ -137,8 +137,8 @@ do while((iconv .eq. 0) .and. (iter .lt. imaxit))
  IF (JCODE .GE. 1) RETURN
  IFAIL=0
  wk=-sd
- EPS=.000000000001D0
- CALL INVERT(WK,IP+ntde,IP+ntde,VM,IP+ntde,EPS,IFAIL)                             
+! EPS=.000000000001D0
+ CALL INVERT(WK,IP+ntde,IP+ntde,VM,IFAIL)                             
  IF(ITER.EQ.1) then
   parms(12)=xl
   zw=0.
@@ -182,8 +182,8 @@ do while((iconv .eq. 0) .and. (iter .lt. imaxit))
      do i=1,(ip+ntde)
       wk(i,i)=wk(i,i)*relridge
      end do
-     EPS=.000000000001D0
-     CALL INVERT(WK,IP+ntde,IP+ntde,VM,IP+ntde,EPS,IFAIL)                             
+!     EPS=.000000000001D0
+     CALL INVERT(WK,IP+ntde,IP+ntde,VM,IFAIL)                             
      DO I=1,(IP+ntde)                                                      
       IF (IFLAG(I).EQ.1) then 
        TT=dot_product(vm(I,:),fd(:)*iflag(:))
@@ -200,7 +200,7 @@ do while((iconv .eq. 0) .and. (iter .lt. imaxit))
  ICONV=1
  if (isflag .gt. 0) then
   XX=dabs(B-B0)                                                   
-  absfd=dabs(fd)
+  absfd=dabs(fd)*iflag(:) !change 151120GH
   IF(any(XX.GT.CRILI)) ICONV=0
   if(any(absfd .GT. gconv)) ICONV=0
  end if
@@ -210,10 +210,10 @@ end do
 
 
 wk=-sd
-EPS=.000000000001D0
+!EPS=.000000000001D0
 
 
-CALL INVERT(WK,IP+ntde,IP+ntde,VM,IP+ntde,EPS,IFAIL)       
+CALL INVERT(WK,IP+ntde,IP+ntde,VM,IFAIL)       
 
 
 ioarray(3,:)=b(:)
@@ -238,10 +238,10 @@ if (any(yy .lt. 0.0001)) isep=1
 
 
 zw=0.
-zw1=matmul(vm, fd)
-zw=dot_product(fd,zw1)
+zw1=matmul(vm, fd*iflag)
+zw=dot_product(fd*iflag,zw1)
 parms(9)=zw
-parms(7)=maxval(abs(FD))
+parms(7)=maxval(dabs(FD)*iflag)
 parms(8)=jcode
 parms(11)=xl
 parms(10)=iter
@@ -255,7 +255,7 @@ end
 
 
 SUBROUTINE plusone(a)
-
+! this is just a dummy function to check the R-Fortran interface.
 double precision a
 
 a=a+1.
@@ -273,7 +273,7 @@ SUBROUTINE INVRT(A,IA)
 !...note that a is changed on exit                                      
 !                                                                       
  INTEGER IA,n
- double precision eps                                             
+ !double precision eps                                             
  double precision, dimension (IA,ia) :: A, B, WK
  INTRINSIC DABS                                                    
                                                                        
@@ -289,7 +289,9 @@ SUBROUTINE INVRT(A,IA)
  RETURN
 END  
 
-SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)                          
+!SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)                          
+
+SUBROUTINE INVERT(A,IA,N,B,IFAIL)                          
 !DEC$ ATTRIBUTES DLLEXPORT :: invert
 
 
@@ -300,8 +302,8 @@ SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)
 !...ifail on exit ifail=0 ok, ifail=1 matrix nearly singular            
 !                                                                       
  IMPLICIT DOUBLE PRECISION (A-H,O-Z)
- INTEGER IA,N,ib,ifail
- double precision eps                                             
+ INTEGER IA,N,ifail
+ !double precision eps                                             
  double precision, dimension (IA,N) :: A, B, WK
  INTRINSIC DABS                                                    
                                                                        
@@ -322,14 +324,14 @@ SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bres
 !DEC$ ATTRIBUTES DLLEXPORT :: like
 
  IMPLICIT DOUBLE PRECISION (A-H,O-Z)
- double precision, dimension (IP+ntde,IP+ntde) :: DINFO, DINFOI, SD, SDI, WK, help
+ double precision, dimension (IP+ntde,IP+ntde) :: DINFO, DINFOI, SD, WK
  double precision, dimension (IP+ntde,IP+ntde,IP+ntde) :: dabl, xxxebx
  double precision SEBX, zeitp
  double precision, dimension (IP+ntde) :: XEBX, bresxges
  double precision, dimension (IP+ntde,IP+ntde) :: XXEBX
 ! double precision, dimension (N+1, IP, Ip, IP) :: XXXEBX
- double precision, dimension (IP+ntde) :: FD, B, h1, h2, h3
- double precision, dimension (N) :: EBX, BX, T1, t2, WKS, hh0, hh1, hh2
+ double precision, dimension (IP+ntde) :: FD, B
+ double precision, dimension (N) :: EBX, BX, T1, t2, hh0, hh1, hh2
  integer, dimension (N) :: IC,ibresc
  double precision, dimension (N,IP) :: X, bresx
  double precision, dimension (N, ip+ntde) :: xges, score_weights
@@ -537,7 +539,7 @@ end if
   dinfo(:,:)=-sd(:,:)
 
   IFAIL=0
-  CALL INVERT(WK,IPges,IPges,DINFOI,IPges,0.00000000001D0,IFAIL)
+  CALL INVERT(WK,IPges,IPges,DINFOI,IFAIL)
 
   DO J=1,IPges
    TRACE=0
@@ -558,8 +560,8 @@ end if
    det=FindDet(DINFO,IPGES)
 !   CALL F03AAF(DINFO,IPges,IPges,DET,WKS,IDETFAIL)
 !   IF(IDETFAIL.NE.0) JCODE=2
-   IF (DET.LT.1.E-30) then 
-     DET=1.E-30
+   IF (DET .LT. dlowest) then 
+     DET=dlowest
      JCODE=2
    end if
   end if
@@ -583,12 +585,12 @@ double precision, dimension (15) :: parmsfc
 double precision, dimension (int(parms(1))) :: T1,t2
 double precision, dimension (int(parms(1)),int(parms(2))) :: X, bresx
 integer, dimension (int(parms(1))) :: IC, ibresc
-double precision, dimension (int(parms(2)+parms(14))) :: B, B0, FD, OFFSET, PVALUE, XE,DELTA,XGRAD, BSAVE, STDERR
+double precision, dimension (int(parms(2)+parms(14))) :: B, B0, FD, OFFSET, PVALUE, XE,DELTA,XGRAD, BSAVE
 double precision, dimension (int(parms(2)+parms(14)),int(parms(2)+parms(14))) :: SD, VM, WK, XHESS, XVM
 double precision, dimension (int(parms(2)+parms(14)),2) :: CI
 integer, dimension (int(parms(2)+parms(14))) :: IFLAG
 double precision, dimension (int(parms(1)),int(2*parms(2)+2*parms(14)+3)) :: cards
-double precision, dimension (8,int(parms(2)+parms(14))) :: IOARRAY
+double precision, dimension (9,int(parms(2)+parms(14))) :: IOARRAY
 double precision, dimension (int(3+parms(2)+parms(14)),int(parms(2)+parms(14))) :: IOAFC
 double precision, dimension (int(parms(1)),int(parms(14)+1)) :: ft
 integer, dimension (int(parms(14)+1)) :: ftmap
@@ -596,22 +598,22 @@ double precision, dimension (int(parms(1)), int(parms(14)+parms(2))) :: score_we
 
 !open(unit=6, file="fgcsspl.txt")
 
-N=parms(1)
-IP=parms(2)
-IFIRTH=parms(3)
-imaxit=Parms(4)
-imaxhs=parms(5)
+N=int(parms(1))
+IP=int(parms(2))
+IFIRTH=int(parms(3))
+imaxit=int(Parms(4))
+imaxhs=int(parms(5))
 step=parms(6)
 crili=parms(7)
 CHI=parms(8)
-PARMS(9)=0     
-
-ngv=parms(13)
-ntde=parms(14)
+gconv=PARMS(9)
+PARMS(9)=0
+ngv=int(parms(13))
+ntde=int(parms(14))
 penalty=parms(15)
 
 offset(:)=ioarray(2,:)
-iflag(:)=ioarray(1,:)
+iflag(:)=int(ioarray(1,:))
 b(:)=ioarray(3,:)
 b0(:)=ioarray(3,:)
 
@@ -624,13 +626,13 @@ b0(:)=ioarray(3,:)
 
 t1=cards(:,ip+1)
 t2=cards(:,ip+2)
-ic=cards(:,ip+3)
+ic=int(cards(:,ip+3))
 
 
 x=cards(:,1:ip)
 if (ntde .gt. 0) then 
   ft(:,1:ntde)=cards(:,(2*ip+3+ntde+1):(2*ip+3+ntde*2))
-  ftmap(1:ntde)=ioarray(4,(ip+1):(ip+ntde))
+  ftmap(1:ntde)=int(ioarray(4,(ip+1):(ip+ntde)))
 else
  ft=0
  ftmap=0
@@ -689,8 +691,8 @@ score_weights=cards(:,(ip+4):(2*ip+3+ntde))
 CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH,ngv,score_weights,bresx,ibresc, ntde,ft,ftmap,penalty) 
 !write(6,*) "nach 1. Like"
 wk(:,:)=-sd(:,:)
-EPS=.000000000001D0
-CALL INVERT(WK,IP+ntde,IP+ntde,VM,IP+ntde,EPS,IFAIL)                             
+!EPS=.000000000001D0
+CALL INVERT(WK,IP+ntde,IP+ntde,VM,IFAIL)                             
 XLMAX=XL
 IFAIL=0
 !CONFLEV=1.-ALPHA
@@ -708,86 +710,91 @@ xhess(:,:)=sd(:,:)
 !   DO 100 K=1,IP
 do k=1,ip+ntde
 !DO 101 L=1,2
- do L=1,2
+ IF (iflag(k) .EQ. 1) then
+     do L=1,2
 
-!   L=1 ... lower limit
-!   L=2 ... upper limit
+    !   L=1 ... lower limit
+    !   L=2 ... upper limit
 
-  xe(:)=0
+      xe(:)=0
 
-  XE(K)=1
+      XE(K)=1
 
-  XSIGN=L*2-3
-  XLAMBDA=0
-!   Initialization of Likelihood, first and second der., beta
-  vm(:,:)=xvm(:,:)
-  sd(:,:)=xhess(:,:)
-  fd(:)=xgrad(:)
-  b(:)=bsave(:)
+      XSIGN=L*2-3
+      XLAMBDA=0
+    !   Initialization of Likelihood, first and second der., beta
+      vm(:,:)=xvm(:,:)
+      sd(:,:)=xhess(:,:)
+      fd(:)=xgrad(:) * iflag(:) ! change 151120GH
+      b(:)=bsave(:)
 
-    
-  ICONV=0
-  ITER=0
+        
+      ICONV=0
+      ITER=0
 
-!   DO 140 WHILE (ICONV .EQ. 0)
-  DO WHILE (ICONV .EQ. 0)
-   ITER=ITER+1  
-   DO K2=1,IP+ntde
-    DELTA(K2)=0
+    !   DO 140 WHILE (ICONV .EQ. 0)
+      DO WHILE (ICONV .EQ. 0)
+       ITER=ITER+1  
+       DO K2=1,IP+ntde
+        DELTA(K2)=0
 
-    DO K3=1,IP+ntde
-     DELTA(K2)=DELTA(K2)+(FD(K3)+XLAMBDA*XE(K3))*VM(K2,K3)
-    end do
-    IF (DABS(DELTA(K2)) .GT. step) THEN
-     DELTA(K2)=DSIGN(step,DELTA(K2))
-    ENDIF
-    B(K2)=B(K2)+DELTA(K2)
-   end do
+        DO K3=1,IP+ntde
+         DELTA(K2)=DELTA(K2)+(FD(K3)+XLAMBDA*XE(K3))*VM(K2,K3)
+        end do
+        IF (DABS(DELTA(K2)) .GT. step) THEN
+         DELTA(K2)=DSIGN(step,DELTA(K2))
+        ENDIF
+        B(K2)=B(K2)+DELTA(K2)
+       end do
 
-   CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH,ngv,score_weights,bresx,ibresc,ntde,ft,ftmap,penalty) 
-   wk(:,:)=-sd(:,:)
-   EPS=.000000000001D0
-   CALL INVERT(WK,IP+ntde,IP+ntde,VM,IP+ntde,EPS,IFAIL)                             
-
-
-   GVG=0
-   DO K2=1,IP+ntde
-    DO K3=1,IP+ntde
-     GVG=GVG+FD(K2)*FD(K3)*VM(K2,K3)
-    end do
-   end do
-
-   XLAMBDA=XSIGN*(DSQRT(-(2*(XL0-XL-0.5*GVG)/VM(K,K))))
+       CALL LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH,ngv,score_weights,bresx,ibresc,ntde,ft,ftmap,penalty) 
+       wk(:,:)=-sd(:,:)
+       fd(:) = fd(:) * iflag(:) !change 151120GH
+!       EPS=.000000000001D0
+       CALL INVERT(WK,IP+ntde,IP+ntde,VM,IFAIL)                             
 
 
-   AXLDIFF=DABS(XL0-XL) 
-   IF (AXLDIFF <= DCRILI) THEN 
-    ICONV=1
-   ENDIF
+       GVG=0
+       DO K2=1,IP+ntde
+        DO K3=1,IP+ntde
+!         GVG=GVG+FD(K2)*FD(K3)*VM(K2,K3)   !commented 151120GH
+         GVG=GVG+FD(K2)*FD(K3)*VM(K2,K3)*iflag(K2)*iflag(K3)   !151120GH
+        end do
+       end do
 
-   C2=0
+       XLAMBDA=XSIGN*(DSQRT(-(2*(XL0-XL-0.5*GVG)/VM(K,K))))
 
-   DO K2=1,IP+ntde
-    DO K3=1,IP+ntde
-     C2=C2+(FD(K2)+XLAMBDA*XE(K2))*(VM(K2,K3))*(FD(K3)+XLAMBDA*XE(K3))
-    end do
-   end do
-    
-   IF (C2 .GT. DCRILI) THEN 
-    ICONV=0
-   ENDIF
 
-   IF (ITER .EQ. IMAXIT) THEN 
-    ICONV=1
-   ENDIF
+       AXLDIFF=DABS(XL0-XL) 
+       IF (AXLDIFF <= DCRILI) THEN 
+        ICONV=1
+       ENDIF
 
-  end do
+       C2=0
 
-  CI(K,L)=B(K)
+       DO K2=1,IP+ntde
+        DO K3=1,IP+ntde
+!         C2=C2+(FD(K2)+XLAMBDA*XE(K2))*(VM(K2,K3))*(FD(K3)+XLAMBDA*XE(K3))           !commented 151120GH
+         C2=C2+(FD(K2)+XLAMBDA*XE(K2))*(VM(K2,K3))*(FD(K3)+XLAMBDA*XE(K3))*iflag(K3)*iflag(K2) !151120GH
+        end do
+       end do
+        
+       IF (C2 .GT. DCRILI) THEN 
+        ICONV=0
+       ENDIF
 
-  IOARRAY(6+L,K)=ITER
-    
- end do
+       IF (ITER .EQ. IMAXIT) THEN 
+        ICONV=1
+       ENDIF
+
+      end do
+
+      CI(K,L)=B(K)
+
+      IOARRAY(6+L,K)=ITER
+        
+     end do
+ endif
 end do      
 
 !   penalized LR p-values for H0:b(k)=0
@@ -795,56 +802,66 @@ end do
 !write (6,*) "vor p-value berechnung"
 
 DO K2=1,IP+ntde
- OSSAVE=OFFSET(K2)
- IFLSAVE=IFLAG(K2)
- OFFSET(K2)=0
- IFLAG(K2)=0
- ITER=0
-!   CALL FIRTHCOX(N,IP,X,T,IC,B,B0,XL,FD,SD,VM,BX,           
-!     +JCODE,IFIRTH,CRILI,ISEP,ITER,IMAXIT,IMAXHS,STEP,IFLAG,
-!     +OFFSET)
+ if (IFLAG(K2) .EQ. 1) then
+     OSSAVE=OFFSET(K2)
+     IFLSAVE=IFLAG(K2)
+     OFFSET(K2)=0
+!     IFLAG(K2)=0
+     ITER=0
+    !   CALL FIRTHCOX(N,IP,X,T,IC,B,B0,XL,FD,SD,VM,BX,           
+    !     +JCODE,IFIRTH,CRILI,ISEP,ITER,IMAXIT,IMAXHS,STEP,IFLAG,
+    !     +OFFSET)
 
- parmsfc(1)=n
- parmsfc(2)=ip
- parmsfc(3)=ifirth
- parmsfc(4)=imaxit
- parmsfc(5)=imaxhs
- parmsfc(6)=step
- parmsfc(7)=crili
- parmsfc(8)=0
- parmsfc(9)=0
- parmsfc(10)=0
- parmsfc(11)=0
- parmsfc(12)=0
- parmsfc(13)=ngv
- parmsfc(14)=ntde
- parmsfc(15)=penalty
-    
- do jjj=1,IP+ntde,1
-  IOAFC(1,jjj)=1
- end do
-!   IFLAG for estimation set to 0
- IOAFC(1,K2)=0
-!   offset value 0
- IOAFC(2,K2)=0
- if (ntde .gt. 0) then
-  do jjj=1, ntde
-   ioafc(4,ip+jjj)=ftmap(jjj)
-  end do
- end if
- CALL FIRTHCOX(CARDS, PARMSFC, IOAFC)
- IF (PARMSFC(8).GE.1) PARMS(9)=2
-! write(6,*) "Var: " , k2
-! write(6,*) "Code: ", parmsfc
-! write(6,*) "likelihood: ", xl, xlmax
- xl=parmsfc(11)
- CHI=2*(XLMAX-XL)       
- IFAIL=0
- DF=1
-! PV=G01ECF('U',CHI,DF,IFAIL)
- PVALUE(K2)=CHI
- OFFSET(K2)=OSSAVE
- IFLAG(K2)=IFLSAVE
+     parmsfc(1)=n
+     parmsfc(2)=ip
+     parmsfc(3)=ifirth
+     parmsfc(4)=imaxit
+     parmsfc(5)=imaxhs
+     parmsfc(6)=step
+     parmsfc(7)=crili
+     parmsfc(8)=1
+     parmsfc(9)=gconv
+     parmsfc(10)=0
+     parmsfc(11)=0
+     parmsfc(12)=0
+     parmsfc(13)=ngv
+     parmsfc(14)=ntde
+     parmsfc(15)=penalty
+
+     IOAFC(2,:)=bsave(:)*IFLAG(:)   !151120GH, starting values for p-value computation
+        
+     do jjj=1,IP+ntde,1
+    !  IOAFC(1,jjj)=1               !commented 151120GH
+       IOAFC(1,jjj)=IFLAG(jjj)      !changed 151120GH
+!       IOAFC(2,jjj)=0.
+     end do
+    !   IFLAG for estimation set to 0
+     IOAFC(1,K2)=0.
+    !   offset value 0
+     IOAFC(2,K2)=0.
+     if (ntde .gt. 0) then
+      do jjj=1, ntde
+       ioafc(4,ip+jjj)=ftmap(jjj)
+      end do
+     end if
+     CALL FIRTHCOX(CARDS, PARMSFC, IOAFC)
+     IF (PARMSFC(8).GE.1) PARMS(9)=2
+    ! write(6,*) "Var: " , k2
+    ! write(6,*) "Code: ", parmsfc
+    ! write(6,*) "likelihood: ", xl, xlmax
+     xl=parmsfc(11)
+     CHI=2*(XLMAX-XL)       
+     IFAIL=0
+     DF=1
+    ! PV=G01ECF('U',CHI,DF,IFAIL)
+     PVALUE(K2)=CHI                     ! it is not a p-value, just the chi-square
+     OFFSET(K2)=OSSAVE
+!     IFLAG(K2)=IFLSAVE
+    ioarray(9,k2)=parmsfc(10)
+ else
+    pvalue(k2)=0.
+    ioarray(9,k2)=0
+ endif
 end do
 
 
@@ -896,9 +913,9 @@ END
 !     |    PACKAGE SUBROUTINES: PACK                           |
 !     |________________________________________________________|
 
-SUBROUTINE fact(ain,a,la,n)
+SUBROUTINE fact(ain,a,n)
 
-INTEGER, INTENT(IN)                      :: la
+!INTEGER, INTENT(IN)                      :: la
 INTEGER, INTENT(IN)                      :: n
 double precision, INTENT(in OUT)                     :: a(3+n*(n+1))
 double precision, intent(in)              ::  ain(n,n)
@@ -1035,6 +1052,8 @@ INTEGER :: i,j,k,l,m, p
 !Anm GH bei den Dimensionen die Indizes verändert, waren v(lv,1) und w(1) vorher
 
 intrinsic dabs
+!GH 161221
+k = 1
 
 IF ( n == 1 ) GO TO 110
 l = 0
@@ -1091,7 +1110,7 @@ GO TO 50
 !     -----------------------
 !     |*** PIVOT COLUMNS ***|
 !     -----------------------
-90    l = w(k)
+90    l = int(w(k))
 DO  i = 1,n
   t = v(i,l)
   v(i,l) = v(i,k)
@@ -1120,46 +1139,46 @@ END SUBROUTINE vert
 !2]The determinant of a triangular matrix is obtained by finding the product of the diagonal elements
 !
 DOUBLE PRECISION FUNCTION FindDet(matrix, n)
-	IMPLICIT NONE
-	DOUBLE PRECISION, DIMENSION(n,n) :: matrix
-	INTEGER, INTENT(IN) :: n
-	DOUBLE PRECISION :: m, temp
-	INTEGER :: i, j, k, l
-	LOGICAL :: DetExists = .TRUE.
-	l = 1
-	!Convert to upper triangular form
-	DO k = 1, n-1
-		IF (matrix(k,k) == 0) THEN
-			DetExists = .FALSE.
-			DO i = k+1, n
-				IF (matrix(i,k) /= 0) THEN
-					DO j = 1, n
-						temp = matrix(i,j)
-						matrix(i,j)= matrix(k,j)
-						matrix(k,j) = temp
-					END DO
-					DetExists = .TRUE.
-					l=-l
-					EXIT
-				ENDIF
-			END DO
-			IF (DetExists .EQV. .FALSE.) THEN
-				FindDet = 0
-				return
-			END IF
-		ENDIF
-		DO j = k+1, n
-			m = matrix(j,k)/matrix(k,k)
-			DO i = k+1, n
-				matrix(j,i) = matrix(j,i) - m*matrix(k,i)
-			END DO
-		END DO
-	END DO
-	
-	!Calculate determinant by finding product of diagonal elements
-	FindDet = l
-	DO i = 1, n
-		FindDet = FindDet * matrix(i,i)
-	END DO
-	
+    IMPLICIT NONE
+    INTEGER, INTENT(IN) :: n
+    DOUBLE PRECISION, DIMENSION(n,n) :: matrix
+    DOUBLE PRECISION :: m, temp
+    INTEGER :: i, j, k, l
+    LOGICAL :: DetExists = .TRUE.
+    l = 1
+    !Convert to upper triangular form
+    DO k = 1, n-1
+        IF (matrix(k,k) == 0) THEN
+            DetExists = .FALSE.
+            DO i = k+1, n
+                IF (matrix(i,k) /= 0) THEN
+                    DO j = 1, n
+                        temp = matrix(i,j)
+                        matrix(i,j)= matrix(k,j)
+                        matrix(k,j) = temp
+                    END DO
+                    DetExists = .TRUE.
+                    l=-l
+                    EXIT
+                ENDIF
+            END DO
+            IF (DetExists .EQV. .FALSE.) THEN
+                FindDet = 0
+                return
+            END IF
+        ENDIF
+        DO j = k+1, n
+            m = matrix(j,k)/matrix(k,k)
+            DO i = k+1, n
+                matrix(j,i) = matrix(j,i) - m*matrix(k,i)
+            END DO
+        END DO
+    END DO
+    
+    !Calculate determinant by finding product of diagonal elements
+    FindDet = l
+    DO i = 1, n
+        FindDet = FindDet * matrix(i,i)
+    END DO
+    
 END FUNCTION FindDet

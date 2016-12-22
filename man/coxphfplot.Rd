@@ -1,15 +1,14 @@
 \name{coxphfplot}
 \alias{coxphfplot}
-\title{Plot the penalized profile likelhood function}
+\title{Plot the Penalized Profile Likelhood Function}
 \description{
-  This function plots the penalized profile likelihood for a specified
-parameter.
+  Plots the penalized profile likelihood for a specified parameter.
 }
 \usage{
 coxphfplot(formula = attr(data, "formula"), data = sys.parent(), 
            profile, pitch = 0.05, limits, alpha = 0.05, 
            maxit = 50, maxhs = 5, epsilon = 1e-06, maxstep = 2.5, 
-           firth = TRUE, legend = "center", ...)
+           firth = TRUE,  penalty=0.5, adapt=NULL, legend = "center", ...)
 }
 \arguments{
   \item{formula}{a formula object, with the response on the left of the  operator, and the
@@ -34,6 +33,9 @@ coxphfplot(formula = attr(data, "formula"), data = sys.parent(),
     in one iteration. Default value is 2.5.}
   \item{firth}{use of Firth's penalized maximum likelihood (\code{firth=TRUE}, default) or the
     standard maximum likelihood method (\code{firth=FALSE}) for fitting the Cox model.}
+  \item{adapt}{optional: specifies a vector of 1s and 0s, where 0 means that the corresponding parameter is fixed at 0, while 1 enables
+     parameter estimation for that parameter. The length of adapt must be equal to the number of parameters to be estimated.}
+  \item{penalty}{strength of Firth-type penalty. Defaults to 0.5.}
   \item{legend}{if FALSE, legends in the plot would be omitted
     (default is TRUE).}
   \item{...}{other parameters to legend}

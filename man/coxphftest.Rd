@@ -1,15 +1,15 @@
 \name{coxphftest}
 \alias{coxphftest}
-\title{Penalized likelihood ratio test in Cox regression}
+\title{Penalized Likelihood Ratio Test in Cox Regression}
 \description{
-This function performs a penalized likelihood ratio test for hypotheses within
+Performs a penalized likelihood ratio test for hypotheses within
 a Cox regression analysis using Firth's penalized likelihood.
 }
 \usage{
 coxphftest(formula = attr(data, "formula"), 
            data = sys.parent(), test = ~., values, 
            maxit = 50, maxhs = 5, epsilon = 1e-06, 
-           maxstep = 2.5, firth = TRUE)
+           maxstep = 2.5, firth = TRUE, adapt=NULL, penalty=0.5)
 }
 \arguments{
   \item{formula}{a formula object, with the response on the left of the  operator, and the
@@ -30,6 +30,10 @@ coxphftest(formula = attr(data, "formula"),
     in one iteration. Default value is 2.5.}
   \item{firth}{use of Firth's penalized maximum likelihood (\code{firth=TRUE}, default) or the
     standard maximum likelihood method (\code{firth=FALSE}) for fitting the Cox model.}
+  \item{adapt}{optional: specifies a vector of 1s and 0s, where 0 means that the corresponding parameter is fixed at 0, while 1 enables
+     parameter estimation for that parameter. The length of adapt must be equal to the number of parameters to be estimated.}
+  \item{penalty}{strength of Firth-type penalty. Defaults to 0.5.}
+    
 }
 \details{
 This function performs a penalized likelihood ratio test on some (or
