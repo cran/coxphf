@@ -9,7 +9,7 @@ a Cox regression analysis using Firth's penalized likelihood.
 coxphftest(formula = attr(data, "formula"), 
            data = sys.parent(), test = ~., values, 
            maxit = 50, maxhs = 5, epsilon = 1e-06, 
-           maxstep = 2.5, firth = TRUE, adapt=NULL, penalty=0.5)
+           maxstep = 0.5, firth = TRUE, adapt=NULL, penalty=0.5)
 }
 \arguments{
   \item{formula}{a formula object, with the response on the left of the  operator, and the

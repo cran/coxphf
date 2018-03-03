@@ -7,7 +7,7 @@
 \usage{
 coxphfplot(formula = attr(data, "formula"), data = sys.parent(), 
            profile, pitch = 0.05, limits, alpha = 0.05, 
-           maxit = 50, maxhs = 5, epsilon = 1e-06, maxstep = 2.5, 
+           maxit = 50, maxhs = 5, epsilon = 1e-06, maxstep = 0.5, 
            firth = TRUE,  penalty=0.5, adapt=NULL, legend = "center", ...)
 }
 \arguments{

@@ -11,7 +11,7 @@
 \usage{
 coxphf(formula = attr(data, "formula"), data = sys.parent(), 
        pl = TRUE, alpha = 0.05, maxit = 50, maxhs = 5, 
-       epsilon = 1e-06, gconv=0.0001, maxstep = 2.5, firth = TRUE, adapt=NULL, 
+       epsilon = 1e-06, gconv=0.0001, maxstep = 0.5, firth = TRUE, adapt=NULL, 
 	   penalty=0.5)       
 }
 \arguments{
@@ -30,7 +30,7 @@ coxphf(formula = attr(data, "formula"), data = sys.parent(),
   \item{gconv}{specifies the maximum allowed absolute value of first derivative of likelihood to
     declare convergence. Default value is 0.0001.}
   \item{maxstep}{specifies the maximum change of (standardized) parameter values allowed
-    in one iteration. Default value is 2.5.}
+    in one iteration. Default value is 0.5.}
   \item{firth}{use of Firth's penalized maximum likelihood (\code{firth=TRUE}, default) or the
     standard maximum likelihood method (\code{firth=FALSE}) for fitting the Cox model.}
   \item{adapt}{optional: specifies a vector of 1s and 0s, where 0 means that the corresponding parameter is fixed at 0, while 1 enables
@@ -60,7 +60,13 @@ application of Firth's penalized likelihood method to Cox regression analysis. T
 and Firth's penalized likelihood method as a solution can be found the web page
 \url{http://cemsiis.meduniwien.ac.at/en/kb/science-research/software/statistical-software/fccoxphf/}.
     
-    }
+    Version 1.13  now includes a convergence check and issues a warning in case of non-convergence. Profile likelihood confidence intervals or 
+	the estimation of the penalized likelihood ratio $p$-values can be vulnerable
+	to non-convergence for numerical issues. In case of non-convergence problems, we suggest to first compare the output values iter.ci with the input parameter maxit. 
+	Then, set maxstep to a smaller value, e.g., 0.1 and increase the number of allowed iterations to e.g. 500. This setting may slow down convergence for some 
+	of the confidence limits, but proved robust also in extreme data sets. 
+	
+	}
 \value{
  \item{coefficients}{the parameter estimates}
  \item{alpha}{the significance level = 1 - confidence level}

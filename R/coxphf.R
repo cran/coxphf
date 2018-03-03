@@ -8,21 +8,13 @@ function(
  maxhs=5,
  epsilon=1e-6,
  gconv=1e-4,
- maxstep=2.5,
+ maxstep=0.5,   ### changed! change also in .Rd!!! or provide templates "robust" (maxstep=0.05) and "fast" (maxstep=2.5)
  firth=TRUE,
  adapt=NULL,
  penalty=0.5
 ){
-### by MP und GH, 2006
-### new parameters (2015-11):
-### penalty = strength of penalty (Firth=0.5)
-### adapt = vector of 1 and 0; 1 for parameter to be optimized, 0 for parameter not to be changed (null parameters) but included in penalty
-### length(adapt) must be k+NTDE (= number of regression coefficients including time-dependent effects)
+### by MP und GH, 2006-2018
 
-### Surv-Objekt entweder usual  (z.B. Surv(time,event)~A+B+C+D) oder
-### Counting-Process-Style!! (z.B. Surv(start,stop,event)~A+B+C+D)
-### event: 1=dead/event, 0=censored
-###
       if(!is.logical(firth)) stop("Please set option firth to TRUE or FALSE.\n")
       if(!is.logical(pl)) stop("Please set option pl to TRUE or FALSE.\n")
 	  
@@ -34,7 +26,7 @@ function(
         
 	  cov.name <- obj$covnames
 
-        k <- ncol(obj$mm1)          # number covariates
+        k <- ncol(obj$mm1)          # number of covariates
         ones <- matrix(1, n, k+NTDE)
         
     if(!is.null(adapt)){
@@ -42,7 +34,7 @@ function(
       if(any(adapt !=0 & adapt !=1)) stop("adapt must consist of 0s and 1s exclusively.")
     }
           
-	  ## standardisierung
+	  ## standardise
 	  sd1 <- apply(as.matrix(obj$mm1),2,sd)
 	  sd2 <- apply(as.matrix(obj$timedata),2,sd)
 	  Z.sd <- c(sd1, sd2 * sd1[obj$timeind])
@@ -60,16 +52,16 @@ function(
         storage.mode(PARMS) <- "double"
         storage.mode(IOARRAY) <- "double"
 
-        ## --------------- Aufruf Fortran - Makro FIRTHCOX ----------------------------------
+        ## --------------- Call Fortran routine FIRTHCOX ----------------------------------
         value <- .Fortran("firthcox",
                 CARDS,
                 outpar = PARMS,
                 outtab = IOARRAY, PACKAGE="coxphf")
         if(value$outpar[8])
-                warning("Error in routine FIRTHCOX; parms8 <> 0")
+                warning("Numerical problem in parameter estimation; check convergence.\n")
         outtab <- matrix(value$outtab, nrow=3+k+NTDE) #
 
-        # --------------- Verarbeitung des Outputs zu Objekt <fit> der Klasse coxphf -------
+        # --------------- create output object -------
         coef.orig <- outtab[3,  ]
         coefs <- coef.orig / Z.sd
         covs <- matrix(outtab[4:(k+3+NTDE), ], ncol=k+NTDE) / (Z.sd %*% t(Z.sd))
@@ -85,13 +77,14 @@ function(
                         y = obj$resp, formula = formula, call = match.call())
         fit$means <- apply(mmm, 2, mean)
         fit$linear.predictors <- as.vector(scale(mmm, fit$means, scale=FALSE) %*% coefs)
+		if(fit$iter>=maxit) warning("Convergence for parameter estimation not attained in ", maxit, " iterations.\n")
         if(firth)
                 fit$method <- "Penalized ML"
           else
                 fit$method <- "Standard ML"
         if(penalty != 0.5) fit$method<-paste(fit$method, " (penalty=",penalty,")",sep="")
 
-        # --------------- Aufruf Fortran - Makro PLCOMP ------------------------------------
+        # --------------- Call Fortran routine PLCOMP ------------------------------------
         if(pl) {
                 PARMS <- c(PARMS[1:7], qchisq(1-alpha, 1), gconv, 0, 0, 0, 0, NTDE, penalty)
                 IOARRAY <- rbind(rep(1, k+NTDE), rep(0, k+NTDE), coef.orig, matrix(0, 6, k+NTDE))
@@ -106,7 +99,7 @@ function(
                         outpar = PARMS,
                         outtab = IOARRAY, PACKAGE="coxphf")
                 if(value$outpar[9])
-                        warning("Error in routine PLCOMP: parms9 <> 0")
+                        warning("Numerical problem in estimating confidence intervals; check convergence.\n")
                 outtab <- matrix(value$outtab, nrow = 9, ncol = k+NTDE)
                 fit$method.ci <- "Profile Likelihood"
                 fit$ci.lower <- exp(outtab[4,  ] / Z.sd)
@@ -115,6 +108,15 @@ function(
                 fit$iter.ci<-t(outtab[7:9,])
                 colnames(fit$iter.ci)<-c("Lower", "Upper", "P-value")
                 rownames(fit$iter.ci)<-cov.name
+				fit$ci.lower[fit$iter.ci[,1]>=maxit]<-NA
+				fit$ci.upper[fit$iter.ci[,2]>=maxit]<-NA
+				fit$prob[fit$iter.ci[,3]>=maxit]<-NA
+				if(any(fit$iter.ci>=maxit)) {
+					warning("Convergence in estimating profile likelihood CI or p-values not attained for all variables.\nConsider re-run with smaller maxstep and larger maxit.\n")
+										}
+				if(any(fit$iter.ci[,3]==-9)) warning("Numerical error in computing penalized likelihood ratio test for some parameters.\n")
+				fit$prob[fit$iter.ci[,3]==-9]<-NA
+				
           } else {
                 fit$method.ci <- "Wald"
                 fit$ci.lower <- exp(coefs + qnorm(alpha/2) * vars^0.5)
@@ -132,14 +134,14 @@ function(
 function(
  formula=attr(data, "formula"), 
  data=sys.parent(), 
- profile,      # righthand formula des zu plottenden Term (z.B. ~B oder ~A:D)
+ profile,      # righthand formula
  pitch=.05,    # distances between points in std's
  limits,       # vector of MIN & MAX in std's, default=extremes of both CI's +-0.5 std. of beta
  alpha=.05, 
  maxit = 50, 
  maxhs = 5, 
  epsilon = 1e-006, 
- maxstep = 2.5, 
+ maxstep = 0.5, 
  firth = TRUE, 
  penalty=0.5,
  adapt=NULL,
@@ -148,11 +150,11 @@ function(
 ) {
 ### by MP und GH, 2006-10
 ###
-	## aufruf coxphf:
+	## call coxphf:
 	fit <- coxphf(formula=formula, data=data, alpha=alpha, maxit=maxit, maxhs=maxhs, 
 		epsilon=epsilon, maxstep=maxstep, firth=firth, pl=TRUE, penalty=penalty, adapt=adapt)
-	coefs <- coef(fit)           ## "normale" Koeffizienten
-	covs <- fit$var              ## Varianzen
+	coefs <- coef(fit)           
+	covs <- fit$var              
 	n <- nrow(data)
 	
 	obj <- decomposeSurv(formula, data, sort=TRUE)
@@ -164,7 +166,7 @@ function(
       k <- ncol(obj$mm1)          # number covariates
       ones <- matrix(1, n, k+NTDE)
           
-      ## standardisierung
+      ## standardise
 	sd1 <- apply(as.matrix(obj$mm1),2,sd)
 	sd2 <- apply(as.matrix(obj$timedata),2,sd)
 	Z.sd <- c(sd1, sd2 * sd1[obj$timeind])
@@ -261,7 +263,7 @@ function(
  maxit=50, 
  maxhs=5, 
  epsilon=1e-6, 
- maxstep=2.5, 
+ maxstep=0.5, 
  firth=TRUE,
  adapt=NULL,
  penalty=0.5

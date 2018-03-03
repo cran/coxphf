@@ -343,7 +343,8 @@ SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bres
 
  intrinsic dexp 
 
- dlowest=0.000000001
+ !dlowest=0.000000001
+ dlowest=1.0E-44
 ! write(6,*) "in LIKE"
  XL=0.
 
