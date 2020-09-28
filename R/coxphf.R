@@ -1,482 +1,250 @@
-"coxphf" <-
+#' Cox Regression with Firth's Penalized Likelihood
+#' 
+#' Implements Firth's penalized maximum likelihood bias reduction method  for Cox regression 
+#' which has been shown to provide a solution in case of monotone likelihood (nonconvergence of likelihood function). 
+#' The program fits profile penalized likelihood confidence intervals which were proved to outperform 
+#' Wald confidence intervals.
+#' 
+#' The phenomenon of monotone likelihood in a sample causes parameter estimates of a Cox model to diverge, with 
+#' infinite standard errors. Therefore, classical maximum likelihood analysis fails; the usual Wald confidence 
+#' intervals cover the whole range of real numbers. Monotone likelihood appears if there is single covariate
+#' or a linear combination of covariates such that at each event time, out of all individuals being at risk at 
+#' that time, the individual with the highest (or at each event time the individual with the lowest) value for that covariate or linear combination experiences the event. It was shown that 
+#' analysis by Firth's penalized likelihood method, particularly in conjunction with the computation
+#' of profile likelihood confidence intervals and penalized likelihood ratio tests is superior to maximum
+#' likelihood analysis. It completely removes the convergence problem mentioned in the paragraph on CONVERGENCE of
+#' the description of the function \code{coxph}. The \code{formula} may involve time-dependent effects or 
+#' time-dependent covariates. The response may
+#' be given in counting process style, but it cannot be used for multivariate failure times, as the program has no option
+#' to fit a robust covariance matrix. The user is responsible for the independency of observations within each risk set, i.e., 
+#' the same individual should not appear twice within the same risk set.
+#' 
+#' @param formula a formula object, with the response on the left and the model terms on the right. 
+#' The response must be a survival object as returned by the 'Surv' function (see its documentation in the survival package)
+#' @param data a data.frame in which to interpret the variables named in the 'formula' argument.
+#' @param pl specifies if confidence intervals and tests should be based on the profile penalized log likelihood (\code{pl=TRUE}, the default) or on the Wald method (\code{pl=FALSE}).
+#' @param alpha the significance level (1-\eqn{\alpha} = the confidence level), 0.05 as default.
+#' @param maxit maximum number of iterations (default value is 50)
+#' @param maxhs maximum number of step-halvings per iterations (default value is 5). 
+#' The increments of the parameter vector in one Newton-Rhaphson iteration step are halved,
+#' unless the new likelihood is greater than the old one, maximally doing \code{maxhs} halvings.
+#' @param epsilon specifies the maximum allowed change in standardized parameter estimates to declare convergence. Default value is 1e-6.
+#' @param gconv specifies the maximum allowed absolute value of first derivative of likelihood to declare convergence. Default value is 0.0001.
+#' @param maxstep specifies the maximum change of (standardized) parameter values allowed in one iteration. Default value is 0.5.
+#' @param firth use of Firth's penalized maximum likelihood (\code{firth=TRUE}, default) or the standard maximum likelihood method (\code{firth=FALSE}) for fitting the Cox model.
+#' @param adapt optional: specifies a vector of 1s and 0s, where 0 means that the corresponding parameter is fixed at 0, while 1 enables parameter estimation for that parameter. The length of adapt must be equal to the number of parameters to be estimated.
+#' @param penalty strength of Firth-type penalty. Defaults to 0.5.
+#' 
+#' @return The object returned is of the class \code{coxphf} and has the following attributes:
+#'  \item{coefficients}{the parameter estimates}
+#' \item{alpha}{the significance level = 1 - confidence level}
+#' \item{var}{the estimated covariance matrix}
+#' \item{df}{the degrees of freedom}
+#' \item{loglik}{the null and maximimized (penalized) log likelihood}
+#' \item{method.ties}{the ties handling method}
+#' \item{iter}{the number of iterations needed to converge}
+#' \item{n}{the number of observations}
+#' \item{y}{the response}
+#' \item{formula}{the model formula}
+#' \item{means}{the means of the covariates}
+#' \item{linear.predictors}{the linear predictors}
+#' \item{method}{the estimation method (Standard ML or Penalized ML)}
+#' \item{method.ci}{the confidence interval estimation method (Profile Likelihood or Wald)}
+#' \item{ci.lower}{the lower confidence limits}
+#' \item{ci.upper}{the upper confidence limits}
+#' \item{prob}{the p-values}
+#' \item{call}{the function call}
+#' \item{iter.ci}{the numbers of iterations needed for profile likelihood confidence interval estimation, and for maximizing the restricted likelihood for p-value computation.}
+#' 
+#' @export
+#'
+#' @encoding UTF-8
+#' @examples
+#' # fixed covariate and monotone likelihood
+#' library(survival)
+#' time<-c(1,2,3)
+#' cens<-c(1,1,1)
+#' x<-c(1,1,0)
+#' sim<-cbind(time,cens,x)
+#' sim<-data.frame(sim)
+#' coxphf(sim, formula=Surv(time,cens)~x) #convergence attained!
+#' #coxph(sim, formula=Surv(time,cens)~x)  #no convergence!
+#' # time-dependent covariate
+#' test2 <- data.frame(list(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
+#'                          stop =c(2, 3, 6, 7, 8, 9, 9, 9,14,17),
+#'                          event=c(1, 1, 1, 1, 1, 1, 1, 0, 0, 0),
+#'                          x    =c(1, 0, 0, 1, 0, 1, 1, 1, 0, 0) ))
+#' 
+#' summary( coxphf( formula=Surv(start, stop, event) ~ x, pl=FALSE, data=test2))
+#' 
+#' 
+#' # time-dependent effect
+#' # the coxphf function can handle interactions of a (fixed or time-dependent)
+#' # covariate with time
+#' # such that the hazard ratio can be expressed as a function of time
+#' 
+#' summary(coxphf(formula=Surv(start, stop, event)~x+x:log(stop), data=test2, pl=FALSE, firth=TRUE))
+#' 
+#' # note that coxph would treat x:log(stop) as a fixed covariate
+#' # (computed before the iteration process)
+#' # coxphf treats x:log(stop) as a time-dependent covariate which changes (
+#' # for the same individual!) over time
+#' 
+#' 
+#' # time-dependent effect with monotone likelihood
+#' 
+#' test3 <- data.frame(list(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
+#'                          stop =c(2, 3, 6, 7, 8, 9, 9, 9,14,17),
+#'                          event=c(1, 0, 0, 1, 0, 1, 1, 0, 0, 0),
+#'                          x    =c(1, 0, 0, 1, 0, 1, 1, 1, 0, 0) ))
+#' 
+#' summary( coxphf( formula=Surv(start, stop, event) ~ x+x:log(stop), pl=FALSE, maxit=400, data=test3))
+#' 
+#' 
+#' # no convergence if option "firth" is turned off: 
+#' # summary( coxphf(formula=Surv(start, stop, event) ~ x+x:log(stop), pl=F,
+#' #                 data=test3, firth=FALSE)
+#' 
+#' 
+#' data(breast)
+#' fit.breast<-coxphf(data=breast, Surv(TIME,CENS)~T+N+G+CD)
+#' summary(fit.breast)
+#' 
+#' @author Georg Heinze and Meinhard Ploner
+#' @references Firth D (1993). Bias reduction of maximum likelihood estimates. \emph{Biometrika} 80:27--38.
+#' 
+#' Heinze G and Schemper M (2001). A Solution to the Problem of Monotone Likelihood in Cox Regression. \emph{Biometrics} 57(1):114--119. 
+#' 
+#' Heinze G (1999). Technical Report 10/1999: The application of Firth's procedure to Cox and logistic regression. Section of Clinical Biometrics, Department of Medical Computer Sciences, University of Vienna, Vienna.
+#' @seealso [coxphfplot, coxphftest]
+coxphf <-
 function(
- formula=attr(data, "formula"),	# formula where .time. represents time for time-interactions
- data=sys.parent(),
+ formula,	# formula where .time. represents time for time-interactions
+ data,
  pl=TRUE,
  alpha=0.05,
  maxit=50,
  maxhs=5,
  epsilon=1e-6,
  gconv=1e-4,
- maxstep=0.5,   ### changed! change also in .Rd!!! or provide templates "robust" (maxstep=0.05) and "fast" (maxstep=2.5)
+ maxstep=0.5,
  firth=TRUE,
  adapt=NULL,
  penalty=0.5
 ){
 ### by MP und GH, 2006-2018
+  call <- match.call()
+  mf <- match.call(expand.dots =FALSE)
+  m <- match(c("formula","data"), names(mf), 0L)
+  mf <- mf[c(1, m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1L]] <- quote(stats::model.frame)
+  mf <- eval(mf, parent.frame())
+  mt <- attr(mf, "terms")
+  
+  y <- model.response(mf)
+  n <- nrow(data)
+  x <- model.matrix(mt, mf)
 
-      if(!is.logical(firth)) stop("Please set option firth to TRUE or FALSE.\n")
-      if(!is.logical(pl)) stop("Please set option pl to TRUE or FALSE.\n")
-	  
-        n <- nrow(data)
+  if(!is.logical(firth)) stop("Please set option firth to TRUE or FALSE.\n")
+  if(!is.logical(pl)) stop("Please set option pl to TRUE or FALSE.\n")
 
-	  obj <- decomposeSurv(formula, data, sort=TRUE)
-        NTDE <- obj$NTDE
-	  mmm <- cbind(obj$mm1, obj$timedata)
+	obj <- decomposeSurv(formula, data, sort=TRUE)
+  NTDE <- obj$NTDE
+	mmm <- cbind(obj$mm1, obj$timedata)
         
-	  cov.name <- obj$covnames
-
-        k <- ncol(obj$mm1)          # number of covariates
-        ones <- matrix(1, n, k+NTDE)
+	cov.name <- obj$covnames
+  k <- ncol(obj$mm1)          # number of covariates
+  ones <- matrix(1, n, k+NTDE)
         
-    if(!is.null(adapt)){
+  if(!is.null(adapt)){
       if(k+NTDE != length(adapt)) stop("length of adapt must match the number of parameters to be estimated.")
       if(any(adapt !=0 & adapt !=1)) stop("adapt must consist of 0s and 1s exclusively.")
-    }
+  }
           
 	  ## standardise
-	  sd1 <- apply(as.matrix(obj$mm1),2,sd)
-	  sd2 <- apply(as.matrix(obj$timedata),2,sd)
-	  Z.sd <- c(sd1, sd2 * sd1[obj$timeind])
-	  obj$mm1 <- scale(obj$mm1, FALSE, sd1)
-	  obj$timedata <- scale(obj$timedata, FALSE, sd2)
-	  mmm <- cbind(obj$mm1, obj$timedata)
+	sd1 <- apply(as.matrix(obj$mm1),2,sd)
+	sd2 <- apply(as.matrix(obj$timedata),2,sd)
+	Z.sd <- c(sd1, sd2 * sd1[obj$timeind])
+	obj$mm1 <- scale(obj$mm1, FALSE, sd1)
+	obj$timedata <- scale(obj$timedata, FALSE, sd2)
+	mmm <- cbind(obj$mm1, obj$timedata)
 	   
-	  CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)	  
-        PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, gconv, 0, 0, 0, 0, NTDE, penalty)
-        IOARRAY <- rbind(rep(1, k+NTDE), matrix(0, 2+k+NTDE, k + NTDE))
-        if(!is.null(adapt)) IOARRAY[1,]<-adapt
-        if(NTDE>0)
-                IOARRAY[4, (k+1):(k+NTDE)] <- obj$timeind
-        storage.mode(CARDS) <- "double"
-        storage.mode(PARMS) <- "double"
-        storage.mode(IOARRAY) <- "double"
+	CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)	  
+  PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, gconv, 0, 0, 0, 0, NTDE, penalty)
+  IOARRAY <- rbind(rep(1, k+NTDE), matrix(0, 2+k+NTDE, k + NTDE))
+  if(!is.null(adapt)) IOARRAY[1,]<-adapt
+  if(NTDE>0)
+  IOARRAY[4, (k+1):(k+NTDE)] <- obj$timeind
+  storage.mode(CARDS) <- "double"
+  storage.mode(PARMS) <- "double"
+  storage.mode(IOARRAY) <- "double"
 
-        ## --------------- Call Fortran routine FIRTHCOX ----------------------------------
-        value <- .Fortran("firthcox",
+  ## --------------- Call Fortran routine FIRTHCOX ----------------------------------
+  value <- .Fortran("firthcox",
                 CARDS,
                 outpar = PARMS,
                 outtab = IOARRAY, PACKAGE="coxphf")
-        if(value$outpar[8])
-                warning("Numerical problem in parameter estimation; check convergence.\n")
-        outtab <- matrix(value$outtab, nrow=3+k+NTDE) #
+  if(value$outpar[8]) warning("Numerical problem in parameter estimation; check convergence.\n")
+  outtab <- matrix(value$outtab, nrow=3+k+NTDE) #
 
-        # --------------- create output object -------
-        coef.orig <- outtab[3,  ]
-        coefs <- coef.orig / Z.sd
-        covs <- matrix(outtab[4:(k+3+NTDE), ], ncol=k+NTDE) / (Z.sd %*% t(Z.sd))
+  # --------------- create output object -------
+  coef.orig <- outtab[3,  ]
+  coefs <- coef.orig / Z.sd
+  covs <- matrix(outtab[4:(k+3+NTDE), ], ncol=k+NTDE) / (Z.sd %*% t(Z.sd))
 
-        dimnames(covs) <- list(cov.name, cov.name)
-        vars <- diag(covs)
-        names(coefs) <- cov.name
-        df<-k+NTDE
-        if(!is.null(adapt)) df<-sum(adapt>0)
-        fit <- list(coefficients = coefs, alpha = alpha, var = covs, df = df,
-                        loglik = value$outpar[12:11], iter = value$outpar[10],
-                        method.ties = "breslow", n = n, ##terms = terms(formula),
-                        y = obj$resp, formula = formula, call = match.call())
-        fit$means <- apply(mmm, 2, mean)
-        fit$linear.predictors <- as.vector(scale(mmm, fit$means, scale=FALSE) %*% coefs)
-		if(fit$iter>=maxit) warning("Convergence for parameter estimation not attained in ", maxit, " iterations.\n")
-        if(firth)
-                fit$method <- "Penalized ML"
-          else
-                fit$method <- "Standard ML"
-        if(penalty != 0.5) fit$method<-paste(fit$method, " (penalty=",penalty,")",sep="")
+  dimnames(covs) <- list(cov.name, cov.name)
+  vars <- diag(covs)
+  names(coefs) <- cov.name
+  df<-k+NTDE
+  if(!is.null(adapt)) df<-sum(adapt>0)
+  fit <- list(coefficients = coefs, alpha = alpha, var = covs, df = df,
+              loglik = value$outpar[12:11], iter = value$outpar[10],
+              method.ties = "breslow", n = n, ##terms = terms(formula),
+              y = obj$resp, formula = formula, call = match.call())
+  fit$means <- apply(mmm, 2, mean)
+  fit$linear.predictors <- as.vector(scale(mmm, fit$means, scale=FALSE) %*% coefs)
+	if(fit$iter>=maxit) warning("Convergence for parameter estimation not attained in ", maxit, " iterations.\n")
+  if(firth) fit$method <- "Penalized ML"
+  else fit$method <- "Standard ML"
+  if(penalty != 0.5) fit$method<-paste(fit$method, " (penalty=",penalty,")",sep="")
 
-        # --------------- Call Fortran routine PLCOMP ------------------------------------
-        if(pl) {
-                PARMS <- c(PARMS[1:7], qchisq(1-alpha, 1), gconv, 0, 0, 0, 0, NTDE, penalty)
-                IOARRAY <- rbind(rep(1, k+NTDE), rep(0, k+NTDE), coef.orig, matrix(0, 6, k+NTDE))
-                if(!is.null(adapt)) IOARRAY[1,]<-adapt
-                if(NTDE>0)
-                		IOARRAY[4,(k+1):(k+NTDE)] <- obj$timeind
-                storage.mode(PARMS) <- "double"
-                storage.mode(IOARRAY) <- "double"
-
-                value <- .Fortran("plcomp",
+  # --------------- Call Fortran routine PLCOMP ------------------------------------
+  if(pl) {
+    PARMS <- c(PARMS[1:7], qchisq(1-alpha, 1), gconv, 0, 0, 0, 0, NTDE, penalty)
+    IOARRAY <- rbind(rep(1, k+NTDE), rep(0, k+NTDE), coef.orig, matrix(0, 6, k+NTDE))
+    if(!is.null(adapt)) IOARRAY[1,]<-adapt
+    if(NTDE>0) IOARRAY[4,(k+1):(k+NTDE)] <- obj$timeind
+    storage.mode(PARMS) <- "double"
+    storage.mode(IOARRAY) <- "double"
+    value <- .Fortran("plcomp",
                         CARDS,
                         outpar = PARMS,
                         outtab = IOARRAY, PACKAGE="coxphf")
-                if(value$outpar[9])
-                        warning("Numerical problem in estimating confidence intervals; check convergence.\n")
-                outtab <- matrix(value$outtab, nrow = 9, ncol = k+NTDE)
-                fit$method.ci <- "Profile Likelihood"
-                fit$ci.lower <- exp(outtab[4,  ] / Z.sd)
-                fit$ci.upper <- exp(outtab[5,  ] / Z.sd)
-                fit$prob <- 1 - pchisq(outtab[6,  ], 1)
-                fit$iter.ci<-t(outtab[7:9,])
-                colnames(fit$iter.ci)<-c("Lower", "Upper", "P-value")
-                rownames(fit$iter.ci)<-cov.name
-				fit$ci.lower[fit$iter.ci[,1]>=maxit]<-NA
-				fit$ci.upper[fit$iter.ci[,2]>=maxit]<-NA
-				fit$prob[fit$iter.ci[,3]>=maxit]<-NA
-				if(any(fit$iter.ci>=maxit)) {
+    if(value$outpar[9]) warning("Numerical problem in estimating confidence intervals; check convergence.\n")
+    fit$method.ci <- "Profile Likelihood"
+    fit$ci.lower <- exp(value$outtab[4,  ] / Z.sd)
+    fit$ci.upper <- exp(value$outtab[5,  ] / Z.sd)
+    fit$prob <- 1 - pchisq(value$outtab[6,  ], 1)
+    fit$iter.ci<-t(value$outtab[7:9,])
+    colnames(fit$iter.ci)<-c("Lower", "Upper", "P-value")
+    rownames(fit$iter.ci)<-cov.name
+    fit$ci.lower[fit$iter.ci[,1]>=maxit]<-NA
+    fit$ci.upper[fit$iter.ci[,2]>=maxit]<-NA
+    fit$prob[fit$iter.ci[,3]>=maxit]<-NA
+    if(any(fit$iter.ci>=maxit)) {
 					warning("Convergence in estimating profile likelihood CI or p-values not attained for all variables.\nConsider re-run with smaller maxstep and larger maxit.\n")
-										}
-				if(any(fit$iter.ci[,3]==-9)) warning("Numerical error in computing penalized likelihood ratio test for some parameters.\n")
-				fit$prob[fit$iter.ci[,3]==-9]<-NA
+		}
+		if(any(fit$iter.ci[,3]==-9)) warning("Numerical error in computing penalized likelihood ratio test for some parameters.\n")
+		fit$prob[fit$iter.ci[,3]==-9]<-NA
 				
-          } else {
-                fit$method.ci <- "Wald"
-                fit$ci.lower <- exp(coefs + qnorm(alpha/2) * vars^0.5)
-                fit$ci.upper <- exp(coefs + qnorm(1 - alpha/2) * vars^0.5)
-                fit$prob <- 1 - pchisq((coefs^2/vars), 1)
-        }
-        names(fit$prob) <- names(fit$ci.upper) <- names(fit$ci.lower) <- cov.name
-        attr(fit, "class") <- c("coxphf", "coxph")
-        fit
+  } else {
+    fit$method.ci <- "Wald"
+    fit$ci.lower <- exp(coefs + qnorm(alpha/2) * vars^0.5)
+    fit$ci.upper <- exp(coefs + qnorm(1 - alpha/2) * vars^0.5)
+    fit$prob <- 1 - pchisq((coefs^2/vars), 1)
+  }
+  names(fit$prob) <- names(fit$ci.upper) <- names(fit$ci.lower) <- cov.name
+  attr(fit, "class") <- c("coxphf", "coxph")
+  fit
 }
-
-
-
-"coxphfplot" <-
-function(
- formula=attr(data, "formula"), 
- data=sys.parent(), 
- profile,      # righthand formula
- pitch=.05,    # distances between points in std's
- limits,       # vector of MIN & MAX in std's, default=extremes of both CI's +-0.5 std. of beta
- alpha=.05, 
- maxit = 50, 
- maxhs = 5, 
- epsilon = 1e-006, 
- maxstep = 0.5, 
- firth = TRUE, 
- penalty=0.5,
- adapt=NULL,
- legend="center",	# see R-help of function <legend>, "" produces no legend
- ...			# other parameters to <legend>
-) {
-### by MP und GH, 2006-10
-###
-	## call coxphf:
-	fit <- coxphf(formula=formula, data=data, alpha=alpha, maxit=maxit, maxhs=maxhs, 
-		epsilon=epsilon, maxstep=maxstep, firth=firth, pl=TRUE, penalty=penalty, adapt=adapt)
-	coefs <- coef(fit)           
-	covs <- fit$var              
-	n <- nrow(data)
-	
-	obj <- decomposeSurv(formula, data, sort=TRUE)
-      NTDE <- obj$NTDE
-      mmm <- cbind(obj$mm1, obj$timedata)
-	
-	cov.name <- obj$covnames
-	
-      k <- ncol(obj$mm1)          # number covariates
-      ones <- matrix(1, n, k+NTDE)
-          
-      ## standardise
-	sd1 <- apply(as.matrix(obj$mm1),2,sd)
-	sd2 <- apply(as.matrix(obj$timedata),2,sd)
-	Z.sd <- c(sd1, sd2 * sd1[obj$timeind])
-	obj$mm1 <- scale(obj$mm1, FALSE, sd1)
-	obj$timedata <- scale(obj$timedata, FALSE, sd2)
-	mmm <- cbind(obj$mm1, obj$timedata)
-
-	CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)   
-      PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, penalty)
- 
-	#--> nun Berechnungen fuer Schleife
-	formula2 <- as.formula(paste(as.character(formula)[2], 
-                                        as.character(profile)[2], sep="~"))
-      obj2 <- decomposeSurv(formula2, data, sort = TRUE)
-      cov.name2 <- obj2$covnames       # Labels der Test-Fakt.
-      pos <- match(cov.name2, cov.name) ## Position der Testfakt.
-
-	std.pos <- diag(fit$var)[pos]^.5
-	if(missing(limits)) {
-		lim.pl <- (c(log(fit$ci.lower[pos]), log(fit$ci.upper[pos])) - 
-		coef(fit)[pos]) / std.pos
-		limits <- c(min(qnorm(alpha / 2), lim.pl[1]) - .5,
-		max(qnorm(1 - alpha / 2), lim.pl[2]) + .5)
-	}
-	limits <- c(floor(limits[1]/pitch)*pitch, ceiling(limits[2]/pitch)*pitch)
-	knots <- seq(limits[1], limits[2], pitch)
-	iflag <- rep(1, k+NTDE)
-	if(!is.null(adapt)) iflag<-adapt
-	iflag[pos] <- 0
-	offset <- rep(0, k+NTDE)
-	nn <- length(knots)
-	res <- matrix(knots, nn, 3) #initialisiere Werte
-	dimnames(res) <- list(1:nn, c("std", cov.name2, "log-likelihood"))
-	for(i in 1:nn) {
-		res[i, 2] <- coefs[pos] + covs[pos,pos]^.5 * knots[i]
-		offset[pos] <- res[i, 2] * Z.sd[pos]  
-		IOARRAY <- rbind(iflag, offset, matrix(0, 1+k+NTDE, k + NTDE))
-		
-		# --------------- Aufruf Fortran - Makro FIRTHCOX ----------------------------------
-		value <- .Fortran("firthcox",
-			CARDS,
-			outpar = PARMS,
-			outtab = IOARRAY, PACKAGE="coxphf")
-		if(value$outpar[8])
-			warning("Error in routine FIRTHCOX; parms8 <> 0")
-		res[i, 3] <- value$outpar[11]
-	}
-
-	#### Graphischer Output:
-	my.par <- act.par <- par()
-	my.par$mai[3] <- 1.65 * act.par$mai[3]
-###if(legend != "") 
-###	my.par$mai[1] <- 2.00 * act.par$mai[1]
-	par(mai=my.par$mai)
-	ind <- (1:nn)[round(4*res[,1])==round(4*res[,1], 10)]
-	if (length(ind)==0) ind <- 1:nn
-	pp <- max(res[,3]) - .5*res[,1]^2
-	plot(res[,-1], type="l", xlab=paste("BETA of", cov.name2)) ##Profile likelihood
-	##lines(res[,2], pp, lty=4)  #<<<Wald approximative profile lik. >>>
-	points(res[res[,1]==0,2], max(res[,3])) ##Maximum of likelihood
-	segments(min(res[,2]), max(res[,3])-.5*qchisq(1-alpha, 1), 
-		max(res[,2]), max(res[,3])-.5*qchisq(1-alpha, 1), lty=3) ##refer.line
-	yy <- par("usr")[4] - (par("usr")[4]-par("usr")[3])*c(.9, .95)
-	segments(coef(fit)[pos] - qnorm(alpha/2) * std.pos, yy[1], 
-		coef(fit)[pos] - qnorm(1 - alpha/2) * std.pos, yy[1], lty=6) ##Wald-CI
-	segments(log(fit$ci.lower[pos]), yy[2], 
-		log(fit$ci.upper[pos]), yy[2], lty=8) ## prof.pen.lik.-CI
-	axis(side=3, at=res[ind,2], labels=res[ind,1])
-	mtext("distance from maximum in standard deviations", side=3, line=3)
-	if(legend != "")
-		legend(legend,
-			##x=par("usr")[1], 
-			##y=par("usr")[3]-.24*(par("usr")[4] - par("usr")[3]), 
-			legend=c("Profile penalized likelihood", 
-				paste(100*(1-alpha), "% - reference line", sep=""), 
-				"Maximum of Likelihood",
-				"Wald - confidence interval", 
-				"Profile penalized likelihood CI"),
-			lty=c(1, 3, -1, 6, 8),
-			pch=c(-1, -1, 1, -1, -1),
-			bty="n", ...
-		)
-	par(mai=act.par$mai)
-	title("Profile likelihood")
-	invisible(res)
-}
-
-"coxphftest" <-
-function(
- formula=attr(data, "formula"), 
- data=sys.parent(), 
- test=~.,    # righthand formula fuer zu testende Faktoren (z.B. ~ B+D )
- values,     # fixierte Werte fuer die Faktoren, default=0 (z.B. c(2,0))
- maxit=50, 
- maxhs=5, 
- epsilon=1e-6, 
- maxstep=0.5, 
- firth=TRUE,
- adapt=NULL,
- penalty=0.5
-) {
-### MP, GH, 2006-10
-###
-	n <- nrow(data)
-	obj <- decomposeSurv(formula, data, sort = TRUE)
-    	NTDE <- obj$NTDE
-    	mmm <- cbind(obj$mm1, obj$timedata)
-    	cov.name <- obj$covnames
-    	k <- ncol(obj$mm1)
-    	ones <- matrix(1, n, k + NTDE)
-	
-	## standardisierung
-	sd1 <- apply(as.matrix(obj$mm1),2,sd)
-	sd2 <- apply(as.matrix(obj$timedata),2,sd)
-	Z.sd <- c(sd1, sd2 * sd1[obj$timeind])
-	obj$mm1 <- scale(obj$mm1, FALSE, sd1)
-	obj$timedata <- scale(obj$timedata, FALSE, sd2)
-	mmm <- cbind(obj$mm1, obj$timedata)
-          
-	CARDS <- cbind(obj$mm1, obj$resp, ones, obj$timedata)   
-	PARMS <- c(n, k, firth, maxit, maxhs, maxstep, epsilon, 1, 0.0001, 0, 0, 0, 0, NTDE, penalty)
-  IOARRAY <- rbind(rep(1, k+NTDE), matrix(0, 2+k+NTDE, k + NTDE))
-  if(!is.null(adapt)) IOARRAY[1,]<-adapt      
-  if(NTDE>0)
-      	IOARRAY[4,(k+1):(k+NTDE)] <- obj$timeind
-	storage.mode(CARDS) <- "double"
-	storage.mode(PARMS) <- "double"
-	storage.mode(IOARRAY) <- "double" #
-	# --------------- Aufruf Fortran - Makro FIRTHCOX ----------------------------------
-	value <- .Fortran("firthcox",
-		CARDS,
-		outpar = PARMS,
-		outtab = IOARRAY, PACKAGE="coxphf")
-	 if(value$outpar[8])
-                warning("Error in routine FIRTHCOX; parms8 <> 0")
-      loglik <- c(NA, value$outpar[11])
-
-	############## now run test formula ################
-	formula2 <- as.formula(paste(as.character(formula)[2], 
-					as.character(test)[2], sep="~"))
-	obj2 <- decomposeSurv(formula2, data, sort = TRUE)
-
-	cov.name2 <- obj2$covnames[obj2$ind]	 # Labels der Test-Fakt.
-	k2 <- length(cov.name2)		# Anzahl Faktoren
-	if(!all(cov.name2 %in% cov.name))
-		stop("formula test is not a subset of whole formula!")
-	pos <- match(cov.name2, cov.name) ## Position der Testfakt.
-	IOARRAY[1, pos] <- 0
-	if(!missing(values))
-		IOARRAY[2, pos] <- values * Z.sd[pos]
-	# --------------- Aufruf Fortran - Makro FIRTHCOX ----------------------------------
-	value <- .Fortran("firthcox",
-		CARDS,
-		outpar = PARMS,
-		outtab = IOARRAY, PACKAGE="coxphf")
-	if(value$outpar[8])
-                warning("Error in routine FIRTHCOX; parms8 <> 0")
-	loglik[1] <- value$outpar[11]
-	
-	testcov <- IOARRAY[2, ]
-	testcov[-pos] <- NA
-	names(testcov) <- cov.name
-
-	## return object of class "coxphftest"
-	fit <- list(testcov = testcov, loglik = loglik, df = k2, 
-		prob = 1 - pchisq(2 * diff(loglik), k2),call = match.call())
-	if(firth)
-		fit$method <- "Penalized ML"
-	else fit$method <- "Standard ML"
-	attr(fit, "class") <- "coxphftest"
-	fit
-}
-
-"print.coxphf" <-
-function(
-  x,   	# object of class coxphf
-  ...		# dummy
-)
-### MP and GH
-### 2006-10
-{
-	print(x$call)
-	cat("Model fitted by", x$method)
-	cat("\nConfidence intervals and p-values by", x$method.ci, "\n\n")
-	
-	out <- cbind(x$coefficients, diag(x$var)^0.5, exp(x$coefficients), 
-		x$ci.lower, x$ci.upper, qchisq(1 - x$prob, 1), x$prob)
-	dimnames(out) <- list(names(x$coefficients), c("coef", "se(coef)", 
-		"exp(coef)", paste(c("lower", "upper"), 1 - x$alpha), "z", "p"))	
-
-	if (x$method.ci != "Wald") 
-		dimnames(out)[[2]][6] <- "Chisq"
-	print(out)
-	
-	LL <- 2 * diff(x$loglik)
-	cat("\nLikelihood ratio test=", LL, " on ", x$df, 
-		" df, p=", 1 - pchisq(LL, x$df), ", n=", x$n, "\n\n", sep = "")
-
-	invisible(x)
-}
-
-"print.coxphftest" <-
-function(
-  x,		# object of class coxphftest
-  ...		# dummy
-)
-### MP, GH, 2006-10
-{
-	print(x$call)
-	cat("Model fitted by", x$method, "\n\nFactors fixed as follows:\n")
-
-	## output of factors and fixing values:
-	print(x$testcov)
-	LL <- 2 * diff(x$loglik) 
-	out <- c(x$loglik[1], x$loglik[2], LL / 2)
-	names(out) <- c("Restricted model", "Full model", "difference")
-
-	## output of likelihoods:
-	cat("\nLikelihoods:\n")
-	print(out)
-
-	## result summary:
-	cat("\nLikelihood ratio test=", LL, " on ", x$df, 
-		" df, p=", x$prob, "\n", sep="")
-	
-	invisible(x)
-}
-
-"summary.coxphf" <-
-function(
-  object,		# object of class coxphf
-  ...			# dummy
-)
-### MP and GH
-### 2006-10
-{
-	print(object$call)
-	cat("\nModel fitted by", object$method)
-	cat("\nConfidence intervals and p-values by", object$method.ci, "\n\n")
-
-	out <- cbind(object$coefficients, diag(object$var)^0.5, 
-		exp(object$coefficients), 
-		object$ci.lower, object$ci.upper,  
-		qchisq(1 - object$prob, 1), object$prob)
-	dimnames(out) <- list(names(object$coefficients), c("coef", "se(coef)", 
-		"exp(coef)", paste(c("lower", "upper"), 1 - object$alpha), "z", "p"))
-	if (object$method.ci != "Wald") 
-		dimnames(out)[[2]][6] <- "Chisq"
-
-	print(out)
-
-	LL <- 2 * diff(object$loglik)
-	cat("\nLikelihood ratio test=", LL, " on ", object$df, 
-		" df, p=", 1 - pchisq(LL, object$df), ", n=", object$n, sep = "")
-	wald.z <- t(coef(object)) %*% solve(object$var) %*% coef(object) 
-	cat("\nWald test =", wald.z, "on", object$df, "df, p =", 
-		1 - pchisq(wald.z, object$df))
-	cat("\n\nCovariance-Matrix:\n")
-	print(object$var)
-	
-	invisible(object)
-}
-
-"breast" <-
-structure(list(T = as.integer(c(1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 
-1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 
-1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 
-1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 
-0, 1, 0, 0, 0, 0)), N = as.integer(c(0, 0, 1, 0, 1, 1, 0, 1, 
-0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 
-1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 
-0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 
-0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 
-0, 0, 1, 0, 0, 0, 0, 1)), G = as.integer(c(1, 1, 1, 1, 1, 1, 
-1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 
-1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 
-1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 
-1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 
-1, 1, 0, 0, 0, 1, 1, 0, 1, 0)), CD = as.integer(c(0, 1, 1, 1, 
-0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 
-1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 
-1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 
-1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0)), TIME = c(1.546052632, 3.519736842, 
-8.059210526, 8.651315789, 12.13815789, 12.36842105, 13.05921053, 
-14.76973684, 18.84868421, 20.03289474, 20.72368421, 21.64473684, 
-23.35526316, 23.68421053, 26.61184211, 27.96052632, 28.35526316, 
-30.42763158, 30.52631579, 30.92105263, 33.09210526, 36.90789474, 
-37.26973684, 39.90131579, 40.16447368, 41.25, 41.61184211, 44.93421053, 
-47.46710526, 47.46710526, 47.96052632, 49.04605263, 50, 55.26315789, 
-56.77631579, 58.02631579, 58.35526316, 58.71710526, 59.67105263, 
-60.23026316, 60.59210526, 62.36842105, 62.56578947, 63.48684211, 
-64.17763158, 64.90131579, 67.30263158, 70.09868421, 70.32894737, 
-72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 
-72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 
-72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 
-72, 72, 72), CENS = as.integer(c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 
-1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0))), .Names = c("T", "N", "G", "CD", "TIME", 
-"CENS"), row.names = c("1", "2", "3", "4", "5", "6", "7", "8", 
-"9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", 
-"20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", 
-"31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", 
-"42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", 
-"53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", 
-"64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", 
-"75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", 
-"86", "87", "88", "89", "90", "91", "92", "93", "94", "95", "96", 
-"97", "98", "99", "100"), class = "data.frame")
