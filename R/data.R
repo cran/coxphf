@@ -12,9 +12,7 @@
 #'   \item{\code{CD}}{a numeric vector}
 #'   \item{\code{TIME}}{a numeric vector}
 #'   \item{\code{CENS}}{a numeric vector}
-#'   \item{\code{pat}}{a numeric vector}
 #' }
-#' 
 #' @references Heinze, G., and Schemper, M. 2001. A solution to the problem of monotone likelihood. Biometrics 57(1) pp. 114-119.
 #' @keywords datasets
 "breast"

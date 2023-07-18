@@ -13,7 +13,6 @@ A data frame with 100 observations on the following 6 variables.
   \item{\code{CD}}{a numeric vector}
   \item{\code{TIME}}{a numeric vector}
   \item{\code{CENS}}{a numeric vector}
-  \item{\code{pat}}{a numeric vector}
 }
 }
 \usage{

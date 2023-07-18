@@ -44,6 +44,22 @@
 #' 
 #' coxphftest( formula=Surv(start, stop, event) ~ x1+x2+x3, test=~x1+x2,  data=testdata)
 #' 
+#' 
+#' 
+#' # How to test total effect of a variable with time-dependent effect
+#' 
+#' 
+#' fitt<- coxphf( formula=Surv(start, stop, event) ~ x1+x2+x3*stop, data=testdata, pl=FALSE)
+#' 
+#' test <- coxphf(formula=Surv(start, stop, event) ~ x1+x2+x3*stop, data=testdata, adapt=c(1, 1, 0, 0))
+#' 
+#' # PLR p-value for x3 + x3:stop
+#' pchisq((fitt$loglik[2]-test$loglik[2])*2, 2, lower.tail=FALSE)
+#' 
+#' #NOT RUN (does not work)
+#' #test <- coxphf(formula=Surv(start, stop, event) ~ x1+x2+x3*stop, data=testdata, test=~x3+stop:x3)
+#' 
+#' 
 #' @references Firth D (1993). Bias reduction of maximum likelihood estimates. \emph{Biometrika} 80:27--38.
 #' 
 #' Heinze G and Schemper M (2001). A Solution to the Problem of Monotone Likelihood in Cox Regression. \emph{Biometrics} 57(1):114--119. 

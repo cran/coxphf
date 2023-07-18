@@ -36,7 +36,7 @@
 #' @param penalty strength of Firth-type penalty. Defaults to 0.5.
 #' 
 #' @return The object returned is of the class \code{coxphf} and has the following attributes:
-#'  \item{coefficients}{the parameter estimates}
+#' \item{coefficients}{the parameter estimates}
 #' \item{alpha}{the significance level = 1 - confidence level}
 #' \item{var}{the estimated covariance matrix}
 #' \item{df}{the degrees of freedom}
@@ -54,6 +54,7 @@
 #' \item{ci.upper}{the upper confidence limits}
 #' \item{prob}{the p-values}
 #' \item{call}{the function call}
+#' \item{terms}{the terms object used}
 #' \item{iter.ci}{the numbers of iterations needed for profile likelihood confidence interval estimation, and for maximizing the restricted likelihood for p-value computation.}
 #' 
 #' @export
@@ -134,7 +135,7 @@ function(
 ){
 ### by MP und GH, 2006-2018
   call <- match.call()
-  mf <- match.call(expand.dots =FALSE)
+  mf <- match.call(expand.dots = FALSE)
   m <- match(c("formula","data"), names(mf), 0L)
   mf <- mf[c(1, m)]
   mf$drop.unused.levels <- TRUE
@@ -148,8 +149,17 @@ function(
 
   if(!is.logical(firth)) stop("Please set option firth to TRUE or FALSE.\n")
   if(!is.logical(pl)) stop("Please set option pl to TRUE or FALSE.\n")
+  
+  # if only an intercept is included in the formula
+  # fit a coxph model instead
+  # since penalisation does not affect the baseline estimate
+  if(ncol(x) == 0 || (ncol(x) == 1 && colnames(x) == "(Intercept)")){
+    fit <- survival::coxph(formula, data)
+    return(fit)
+  }
+  
 
-	obj <- decomposeSurv(formula, data, sort=TRUE)
+	obj <- decomposeSurv(formula, data, sort = FALSE)
   NTDE <- obj$NTDE
 	mmm <- cbind(obj$mm1, obj$timedata)
         
@@ -245,6 +255,7 @@ function(
     fit$prob <- 1 - pchisq((coefs^2/vars), 1)
   }
   names(fit$prob) <- names(fit$ci.upper) <- names(fit$ci.lower) <- cov.name
+  fit$terms <- mt
   attr(fit, "class") <- c("coxphf", "coxph")
-  fit
+  return(fit)
 }

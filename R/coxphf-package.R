@@ -36,8 +36,9 @@
 #'  of the confidence limits, but proved robust also in extreme data sets. 
 #' 
 #' @author Georg Heinze <georg.heinze@meduniwien.ac.at> and Meinhard Ploner
-#' @references 
-#' 
+#' @references Firth D (1993). Bias reduction of maximum likelihood estimates. \emph{Biometrika} 80:27--38.
+#' Heinze G and Schemper M (2001). A Solution to the Problem of Monotone Likelihood in Cox Regression. \emph{Biometrics} 57(1):114--119. 
+#' Heinze G (1999). Technical Report 10/1999: The application of Firth's procedure to Cox and logistic regression. Section of Clinical Biometrics, Department of Medical Computer Sciences, University of Vienna, Vienna.
 #' 
 #' @keywords survival
 #' 
