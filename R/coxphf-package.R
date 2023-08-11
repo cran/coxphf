@@ -1,7 +1,7 @@
-#' @name coxphf
+
 #' @title Cox Regression with Firth's Penalized Likelihood
 #' @docType package
-#' @aliases {coxphf}-package
+#' @aliases coxphf-package
 #' 
 #' @description 
 #' Implements Firth's penalized maximum likelihood bias reduction method  for Cox regression which has been 

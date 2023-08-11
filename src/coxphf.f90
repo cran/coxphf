@@ -1,5 +1,5 @@
 SUBROUTINE FIRTHCOX(cards, parms, IOARRAY)
-!DEC$ ATTRIBUTES DLLEXPORT :: firthcox
+
 IMPLICIT DOUBLE PRECISION (A-H,O-Z)  
 
 
@@ -291,8 +291,7 @@ END
 
 !SUBROUTINE INVERT(A,IA,N,B,IB,EPS,IFAIL)                          
 
-SUBROUTINE INVERT(A,IA,N,B,IFAIL)                          
-!DEC$ ATTRIBUTES DLLEXPORT :: invert
+SUBROUTINE INVERT(A,IA,N,B,IFAIL)
 
 
 !                                                                       
@@ -320,8 +319,7 @@ END
 
 
 
-SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bresx,ibresc, ntde,ft, ftmap, penalty) 
-!DEC$ ATTRIBUTES DLLEXPORT :: like
+SUBROUTINE LIKE(N,IP,X,T1,t2,IC,XL,FD,SD,B,JCODE,IFIRTH, ngv, score_weights,bresx,ibresc, ntde,ft, ftmap, penalty)
 
  IMPLICIT DOUBLE PRECISION (A-H,O-Z)
  double precision, dimension (IP+ntde,IP+ntde) :: DINFO, DINFOI, SD, WK
@@ -577,7 +575,6 @@ END
 
 
 SUBROUTINE PLCOMP(CARDS, PARMS, IOARRAY)
-!DEC$ ATTRIBUTES DLLEXPORT :: plcomp
 
 IMPLICIT DOUBLE PRECISION (A-H,O-Z)
 INTRINSIC DABS, DSQRT, DSIGN                                                    

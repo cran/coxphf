@@ -77,13 +77,13 @@ coxphftest( formula=Surv(start, stop, event) ~ x1+x2+x3, test=~x1+x2,  data=test
 
 # How to test total effect of a variable with time-dependent effect
 
+# NOT RUN (works)
+#fitt<- coxphf( formula=Surv(start, stop, event) ~ x1+x2+x3*stop, data=testdata, pl=FALSE)
 
-fitt<- coxphf( formula=Surv(start, stop, event) ~ x1+x2+x3*stop, data=testdata, pl=FALSE)
-
-test <- coxphf(formula=Surv(start, stop, event) ~ x1+x2+x3*stop, data=testdata, adapt=c(1, 1, 0, 0))
+#test <- coxphf(formula=Surv(start, stop, event) ~ x1+x2+x3*stop, data=testdata, adapt=c(1,1,0,0))
 
 # PLR p-value for x3 + x3:stop
-pchisq((fitt$loglik[2]-test$loglik[2])*2, 2, lower.tail=FALSE)
+#pchisq((fitt$loglik[2]-test$loglik[2])*2, 2, lower.tail=FALSE)
 
 #NOT RUN (does not work)
 #test <- coxphf(formula=Surv(start, stop, event) ~ x1+x2+x3*stop, data=testdata, test=~x3+stop:x3)
